@@ -136,7 +136,7 @@ module LEDModel_testbench();
         latch(24'hAAAAAA);
         latch(24'hAAAAAA);
 
-        $$display("If there are no assertion errors it passed");
+        $display("If there are no assertion errors it passed");
 
         $stop();
     end
@@ -232,7 +232,7 @@ module LEDStripModel_testbench();
         latch(expected);
         latch(expected);
 
-        $$display("If there are no assertion errors it passed");
+        $display("If there are no assertion errors it passed");
 
         $stop();
     end

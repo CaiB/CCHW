@@ -2,13 +2,14 @@
 vlib work
 
 # Source and Testbench files
+vlog -work work "../src/LEDDriver.sv"
 vlog -work work "../src/LEDModel.sv"
 
 # Call simulator
-vsim -voptargs="+acc" -t 1ps -lib work LEDStripModel_testbench
+vsim -voptargs="+acc" -t 1ps -lib work LEDDriver_testbench
 
 # Source the wave file
-do wave_LEDStripModel.do
+do Test_LEDDriver_wave.do
 
 # Set windows
 view wave
