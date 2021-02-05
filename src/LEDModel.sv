@@ -19,12 +19,12 @@ module LEDModel (
         logic [7:0] blue;    
     } rgbRegStruct;
 
-    //logic [23:0] latchedReg, shiftReg;
-
     rgbRegStruct latchedReg, shiftReg;  // internal data registers
     logic [8:0]  latchCntr = 0;         // counts to 500 us before latching
     logic [4:0]  relayCntr = 0;         // counts to 24 before entering relay mode
-    logic        relayMode, relayModeD; // forwards data instead of accepting it
+
+    logic        relayMode;             // "state" bit
+    logic        relayMode_d1;          // state bit delayed 1 cycle
     logic        osc;                   // internal oscillator
 
     // generate internal oscillaor
@@ -49,20 +49,21 @@ module LEDModel (
 
     // external clock resets latching timer and loads 24 bits before relaying forward
     always_ff @(posedge CKI) begin
-        if (!(relayMode)) begin
+        if (!relayMode) begin
             relayCntr  <= relayCntr + 1;
             shiftReg   <= {shiftReg[22:0], SDI};
         end
         
-        relayModeD <= relayMode;
+        relayMode_d1 <= relayMode;
         latchCntr <= '0;
     end
 
     // "forwards" the clock/data signal once all 24 register positions are filled
     assign relayMode = (relayCntr == 'd24);
     
-    assign CKO = relayMode&relayModeD ? CKI : '0;
-    assign SDO = relayMode&relayModeD ? SDI : '0;
+    // relay outputs kick in a cycle after getting into relay mode
+    assign CKO = relayMode&relayMode_d1 ? CKI : '0;
+    assign SDO = relayMode&relayMode_d1 ? SDI : '0;
     assign rgb = latchedReg;
 
     // ------------------------------------------------------------------
@@ -74,48 +75,33 @@ module LEDModel_testbench();
     logic SDO, CKO;
     logic SDI, CKI;
 
-    localparam halfcycle = 40ns; // assumes 12.5 MHz clock input - MAX 25 MHz
+    localparam period = 80ns; // assumes 12.5 MHz clock input
     integer i;
 
     LEDModel dut (.rgb, .SDO, .CKO, .SDI, .CKI);
 
-    // wait 500 us for latch
+    // wait 500 us for latch and checks latched value against expected
     task latch(input [23:0] expected); 
         begin
             CKI = 0;
             #501us;
-            assert(rgb == expected);
+            assert(rgb == expected) 
+                $display("latched value at %t matches expected value of %h", $time, expected);
+                else $display("latched value at %t DOES NOT match expected value of %h", $time, expected);
         end
     endtask
 
-    // basic loads
+    // loads 24 bit rgb into a single LED register
     task loadColor6Hex(input [23:0] rgb) ;
         begin
             SDI = 0; CKI = 0;
 
-            // loads the 24 bit rgb code into the shift register
             for (i = 23; i >= 0 ; i--) begin
                 SDI = rgb[i];
-                #halfcycle;
+                #(period/2);
                 CKI = '1;
-                #halfcycle;
+                #(period/2);
                 CKI = '0;
-            end
-        end
-    endtask
-
-    // assertion based loads
-        task loadColor6HexRelay(input [23:0] rgb) ;
-        begin
-            SDI = 0; CKI = 0;
-
-            // loads the 24 bit rgb code into the shift register
-            for (i = 23; i >= 0 ; i--) begin
-                SDI = rgb[i]; assert(SDO == rgb[i]);
-                #halfcycle;
-                CKI = '1; assert(CKO == '1);
-                #halfcycle;
-                CKI = '0; assert(CKO == '0);
             end
         end
     endtask
@@ -123,6 +109,8 @@ module LEDModel_testbench();
 
     // stim
     initial begin
+        $timeformat(-9, 2, " ns", 20);  // formats to ns
+        
         loadColor6Hex(24'hFFFFFF);
         loadColor6Hex(24'hF0F0F0);
         latch(24'hFFFFFF);
@@ -136,7 +124,6 @@ module LEDModel_testbench();
         latch(24'hAAAAAA);
         latch(24'hAAAAAA);
 
-        $display("If there are no assertion errors it passed");
 
         $stop();
     end
@@ -147,17 +134,17 @@ endmodule
 
 module LEDStripModel_testbench();
 
-    localparam LEDS =  5;
-    
+    localparam LEDS =  5;               // number of leds being tested
     
     logic [LEDS-1:0][23:0] rgb;
-    logic [LEDS:0] SDIO, CKIO;
-    logic [LEDS-1:0][23:0] expected;
+    logic [LEDS:0] SDIO, CKIO;          // XXI and XXO mix and are instead called XXIO
+    logic [LEDS-1:0][23:0] expected;    // debug data
 
-    localparam halfcycle = 40ns; // assumes 12.5 MHz clock input - MAX 25 MHz
+    localparam period = 80ns;           // assumes 12.5 MHz clock input
     integer i,k;
     genvar j;
 
+    // generates LEDS
     generate
         for (j = 0; j < LEDS; j++) begin
             LEDModel led (.rgb(rgb[j]), .SDO(SDIO[j+1]), .CKO(CKIO[j+1]), .SDI(SDIO[j]), .CKI(CKIO[j]));
@@ -165,32 +152,33 @@ module LEDStripModel_testbench();
     endgenerate
 
 
-    // wait 500 us for latch
+    // wait 500 us for latch and check that latched value matches expectation
     task latch(input [LEDS-1:0][23:0] expected); 
         begin
             CKIO[0] = 0;
             #501us;
-            assert(rgb == expected);
+            assert(rgb == expected) 
+                $display("latched value at %t matches expected value of %h", $time, expected);
+                else $display("latched value at %t DOES NOT match expected value of %h", $time, expected);
         end
     endtask
 
-    // basic loads
+    // loads 24 bit rgb into a singleLED register
     task loadColor6Hex(input [23:0] rgb);
         begin
             SDIO[0] = 0; CKIO[0] = 0;
 
-            // loads the 24 bit rgb code into the shift register
             for (i = 23; i >= 0 ; i--) begin
                 SDIO[0] = rgb[i];
-                #halfcycle;
+                #(period/2);
                 CKIO[0] = '1;
-                #halfcycle;
+                #(period/2);
                 CKIO[0] = '0;
             end
         end
     endtask
 
-    // loads all LEDS with the same rgb config
+    // loads all LEDS with the same rgb data
     task loadAllRGBHex(input [23:0] rgb);
         begin
            for (k = 0; k < LEDS; k++) begin
@@ -200,39 +188,20 @@ module LEDStripModel_testbench();
         end
     endtask
 
-    // assertion based loads
-    task loadColor6HexRelay(input [23:0] rgb);
-        begin
-            SDIO[0] = 0; CKIO[0] = 0;
-
-            // loads the 24 bit rgb code into the shift register
-            for (i = 23; i >= 0 ; i--) begin
-                SDIO[0] = rgb[i];
-                #halfcycle; 
-                assert(CKIO[LEDS] == CKIO[0]);
-                CKIO[0] = '1;
-                #halfcycle; 
-                assert(SDIO[LEDS] == rgb[i]);
-                assert(CKIO[LEDS] == CKIO[0]);
-                CKIO[0] = '0;
-            end
-        end
-    endtask
-
 
     // stim
     initial begin
+        $timeformat(-9, 2, " ns", 20);  // formats to ns
+
 
         loadAllRGBHex(24'hFFFFFF);
-        loadColor6HexRelay(24'hFFFFFF);
+        loadColor6Hex(24'hFFFFFF);
         latch(expected);
 
         loadAllRGBHex(24'hFFF000);
-        loadColor6HexRelay(24'hFFF000);
+        loadColor6Hex(24'hFFF000);
         latch(expected);
         latch(expected);
-
-        $display("If there are no assertion errors it passed");
 
         $stop();
     end

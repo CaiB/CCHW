@@ -8,7 +8,7 @@ module LEDDriver #(
 ) (
     output logic dOut, clkOut,              // outputs to LED
     output logic done,                      // comms output to visualizer
-//    input  logic [LEDS-1:0][23:0] led_rgb,  // data input from visualizer
+
     input  logic [(24*LEDS)-1:0] led_rgb,   // data input from visualizer
     input  logic start,                     // comms input from visualizer
     input  logic clk, rst                   // standard inputs
@@ -41,32 +41,20 @@ module LEDDriver #(
     end
 
     // counter update logic
-    always_ff @(posedge clk) begin : ns_output
+    always_ff @(posedge clk) begin : ps_output
         if (rst) begin
             waitCntr <= '0;
             loadCntr <= '0;
         end
 
         else begin
-            waitCntr <= waitCntr;
-            loadCntr <= loadCntr;
-
-            case (ps)
-                waitState: begin
-                    waitCntr <= waitCntr + 1;
-                    loadCntr <= '0;
-                end
-                loadState: begin
-                    waitCntr <= '0;
-                    loadCntr <= loadCntr + 1;
-
-                end
-            endcase
+            waitCntr <= (ps == waitState) ? waitCntr + 1 : '0;
+            loadCntr <= (ps == loadState) ? loadCntr + 1 : '0;
         end
     end
 
     // output logic
-    assign dOut   = led_rgb[LEDS*24 - 1 - loadCntr] && (ps == loadState);
+    assign dOut   = led_rgb[LEDS*24 - 1 - loadCntr] && (ps == loadState);   // reads data from msb to lsb
     assign clkOut = clk && (ps == loadState);
     assign done   = (ps == waitState);
 
@@ -74,15 +62,12 @@ endmodule
 
 module LEDDriver_testbench();
 
-    localparam TB_LEDS = 1;
     localparam TB_FREQ = 12_500_000;
-
     localparam TB_PERIOD =  80ps;
 
+    logic [23:0] led_rgb;
     logic dOut, clkOut;
     logic done;
-//    logic [LEDS-1:0][24] led_rgb;
-    logic [(24*TB_LEDS)-1:0] led_rgb;
     logic start;
     logic clk, rst;
 
@@ -91,7 +76,7 @@ module LEDDriver_testbench();
 
     // DUT
     LEDDriver #(
-        .LEDS(TB_LEDS), 
+        .LEDS(1), 
         .FREQ(TB_FREQ)
     ) dut (
         .dOut    (dOut   ),
@@ -109,16 +94,19 @@ module LEDDriver_testbench();
         forever #(TB_PERIOD/2) clk = ~clk;
     end
 
-    task loadColor (input [(24*TB_LEDS)-1:0] rgb);
+    task loadColor (input [23:0] rgb);
         begin
+
+            // waits until the the first rising edge of the load state
             wait(done);
             led_rgb <= rgb;
             start   <= '1;
             wait(clkOut);
             
-            for (i = 0; i < 24*TB_LEDS; i++) begin
-                #5ps assert(dOut == rgb[TB_LEDS*24 - 1 - i]) 
-                    else $display("time = %0t expected = %b recieved = %b", $time, rgb[TB_LEDS*24 - 1 - i], dOut);
+            // checks data 5ps after clock edge for defined behavior
+            for (i = 0; i < 24; i++) begin
+                #5ps assert(dOut == rgb[23 - i]) 
+                    else $display("time = %0t expected = %b recieved = %b", $time, rgb[23 - i], dOut);
                 @(posedge clk);    
             end
         end
@@ -130,21 +118,21 @@ module LEDDriver_testbench();
         rst <= '1; repeat(5) @(posedge clk);
         rst <= '0;
 
-        loadColor({TB_LEDS{24'h800000}});
-        loadColor({TB_LEDS{24'hffffff}});
-        loadColor({TB_LEDS{24'h555555}});
-        loadColor({TB_LEDS{24'h000001}});
+        loadColor(24'h800000);
+        loadColor(24'hffffff);
+        loadColor(24'h555555);
+        loadColor(24'h000001);
     
         $display("If no assertions errors appeared the simulation was a success");
 
         $stop();
     end
-
 endmodule
+
 
 module LEDStripDriver_testbench();
 
-    localparam TB_LEDS = 5;
+    localparam TB_LEDS = 5;             // number of LEDs
 
     localparam TB_FREQ = 12_500_000;
     localparam TB_PERIOD =  80ps;
@@ -193,11 +181,13 @@ module LEDStripDriver_testbench();
 
     task loadColor (input [(24*TB_LEDS)-1:0] rgb);
         begin
+            // waits until the the first rising edge of the load state
             wait(done);
             led_rgb <= rgb;
             start   <= '1;
             wait(CKIO[0]);
             
+            // checks data 5ps after clock edge for defined behavior
             for (i = 0; i < 24*TB_LEDS; i++) begin
                 #5ps assert(SDIO[0] == rgb[TB_LEDS*24 - 1 - i]) 
                     else $display("time = %0t expected = %b recieved = %b", $time, rgb[TB_LEDS*24 - 1 - i], SDIO[0]);

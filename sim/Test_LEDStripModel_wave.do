@@ -4,9 +4,8 @@ add wave -noupdate -radix hexadecimal /LEDStripModel_testbench/rgb
 add wave -noupdate -radix hexadecimal /LEDStripModel_testbench/expected
 add wave -noupdate -expand /LEDStripModel_testbench/SDIO
 add wave -noupdate -expand /LEDStripModel_testbench/CKIO
-add wave -noupdate {/LEDStripModel_testbench/genblk1[0]/led/relayModeD}
 TreeUpdate [SetDefaultTree]
-WaveRestoreCursors {{Cursor 1} {419799740 ps} 0}
+WaveRestoreCursors {{Cursor 1} {271499284 ps} 0}
 quietly wave cursor active 1
 configure wave -namecolwidth 150
 configure wave -valuecolwidth 100
