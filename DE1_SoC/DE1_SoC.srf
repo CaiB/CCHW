@@ -1,0 +1,15 @@
+{ "" "" "" "Output pins are stuck at VCC or GND" {  } {  } 0 13024 "" 0 0 "Design Software" 0 -1 0 ""}
+{ "" "" "" "Number of processors has not been specified which may cause overloading on shared machines.  Set the global assignment NUM_PARALLEL_PROCESSORS in your QSF to an appropriate value for best performance." {  } {  } 0 18236 "" 0 0 "Design Software" 0 -1 0 ""}
+{ "" "" "" "*" {  } {  } 0 20028 "" 0 0 "Design Software" 0 -1 0 ""}
+{ "" "" "" "*" {  } {  } 0 332060 "" 0 0 "Design Software" 0 -1 0 ""}
+{ "" "" "" "*" {  } {  } 0 332049 "" 0 0 "Design Software" 0 -1 0 ""}
+{ "" "" "" "*" {  } {  } 0 332174 "" 0 0 "Design Software" 0 -1 0 ""}
+{ "" "" "" "*" {  } {  } 0 21074 "" 0 0 "Design Software" 0 -1 0 ""}
+{ "" "" "" "*" {  } {  } 0 292013 "" 0 0 "Design Software" 0 -1 0 ""}
+{ "" "" "" "*" {  } {  } 0 15714 "" 0 0 "Design Software" 0 -1 0 ""}
+{ "" "" "" "*" {  } {  } 0 15705 "" 0 0 "Design Software" 0 -1 0 ""}
+{ "" "" "" "*" {  } {  } 0 171167 "" 0 0 "Design Software" 0 -1 0 ""}
+{ "" "" "" "*" {  } {  } 0 10905 "" 0 0 "Design Software" 0 -1 0 ""}
+{ "" "" "" "*" {  } {  } 0 284006 "" 0 0 "Design Software" 0 -1 0 ""}
+{ "" "" "" "*" {  } {  } 0 332068 "" 0 0 "Design Software" 0 -1 0 ""}
+{ "" "" "" "has no driver" {  } {  } 0 9999 "" 0 0 "Design Software" 0 -1 0 ""}
