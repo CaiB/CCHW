@@ -1,4 +1,8 @@
 // testing module for the LEDDriver.sv. Meant to provide hardcoded color values to verify LEDDriver works
+// COMPLEXITY = 0: sets the entire LED to red
+// COMPLEXITY = 1: switches entire LED between 8 colors (none, blue, green, cyan, red, violet, yellow, white)
+//                 at ~1Hz
+// COMPLEXITY > 1: switches individual halfs of the LED strip between 8 colors as defined above at 1 Hz
 
 module HardLEDValues #(
     parameter LEDS = 50,        // number of LEDs being driven
