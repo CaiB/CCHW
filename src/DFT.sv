@@ -91,8 +91,8 @@ module SampleStorage
     SampleRegister TopOctaveReg0(.out(Inter[1]), .in(newSample), .clk);
     genvar i;
     generate
-        for(i = 1; i < TOPSIZE; i++)// MakeTopOctStorage
-        begin
+        for(i = 1; i < TOPSIZE; i++)// MakeTopOctStorage 
+        begin : A_NAME // TODO: give this generate a name so that DE1 compiles
             SampleRegister TopOctaveReg(.out(Inter[i+1]), .in(Inter[i]), .clk);
         end
     endgenerate

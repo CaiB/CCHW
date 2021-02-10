@@ -146,7 +146,7 @@ module LEDStripModel_testbench();
 
     // generates LEDS
     generate
-        for (j = 0; j < LEDS; j++) begin
+        for (j = 0; j < LEDS; j++) begin : LED_Strip
             LEDModel led (.rgb(rgb[j]), .SDO(SDIO[j+1]), .CKO(CKIO[j+1]), .SDI(SDIO[j]), .CKI(CKIO[j]));
         end
     endgenerate

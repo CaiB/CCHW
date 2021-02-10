@@ -154,7 +154,7 @@ module LEDStripDriver_testbench();
 
     // generate the LED strip
     generate
-        for (j = 0; j < TB_LEDS; j++) begin
+        for (j = 0; j < TB_LEDS; j++) begin : LEDS
             LEDModel led (.rgb(rgb[j]), .SDO(SDIO[j+1]), .CKO(CKIO[j+1]), .SDI(SDIO[j]), .CKI(CKIO[j]));
         end
     endgenerate

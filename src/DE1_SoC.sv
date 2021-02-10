@@ -1,5 +1,5 @@
 // Top-level module that defines the I/Os for the DE-1 SoC board   
-module DE1_SoC (HEX0, HEX1, HEX2, HEX3, HEX4, HEX5, KEY, LEDR, SW);
+module DE1_SoC (HEX0, HEX1, HEX2, HEX3, HEX4, HEX5, KEY, LEDR, SW, GPIO_0, CLOCK50);
 	output logic [ 6:0]  HEX0, HEX1, HEX2, HEX3, HEX4, HEX5;
 	output logic [ 9:0]  LEDR;
 	inout  logic [35:0]  GPIO_0;
@@ -23,7 +23,7 @@ module DE1_SoC (HEX0, HEX1, HEX2, HEX3, HEX4, HEX5, KEY, LEDR, SW);
 
 
 	localparam LEDS = 50;		// number of leds being driver
-	localparam COMPLEXITY = 0;	// see HardLEDValues.sv header comment for explanation
+	localparam COMPLEXITY = 2;	// see HardLEDValues.sv header comment for explanation
 	assign rst = ~KEY[0];
 
 	logic start, done;
@@ -33,7 +33,7 @@ module DE1_SoC (HEX0, HEX1, HEX2, HEX3, HEX4, HEX5, KEY, LEDR, SW);
 	
 
 	always_ff @(CLOCK50) begin
-		clk_divider <= rst ? '0 : clk_divider + 1;
+		clk_divider <= rst ? '0 : clk_divider + 1'b1;
 	end
 
 	assign clk = clk_divider[1]; 

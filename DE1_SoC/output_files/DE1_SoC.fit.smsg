@@ -1,0 +1,112 @@
+Warning (18236): Number of processors has not been specified which may cause overloading on shared machines.  Set the global assignment NUM_PARALLEL_PROCESSORS in your QSF to an appropriate value for best performance.
+Warning (292013): Feature LogicLock is only available with a valid subscription license. You can purchase a software subscription to gain full access to this feature.
+Warning (15714): Some pins have incomplete I/O assignments. Refer to the I/O Assignment Warnings report for details
+Extra Info (176236): Started Fast Input/Output/OE register processing
+Extra Info (176237): Finished Fast Input/Output/OE register processing
+Extra Info (176238): Start inferring scan chains for DSP blocks
+Extra Info (176239): Inferring scan chains for DSP blocks is complete
+Extra Info (176246): Moving registers into I/O cells, DSP blocks, and RAM blocks to improve timing and density
+Extra Info (176247): Finished moving registers into I/O cells, DSP blocks, and RAM blocks
+Warning (15705): Ignored locations or region assignments to the following nodes
+Warning (332174): Ignored filter at DE1_SoC_golden_top.sdc(9): CLOCK_50 could not be matched with a port File: C:/Users/User/Documents/GitHub/CCHW/DE1_SoC/DE1_SoC_golden_top.sdc Line: 9
+Warning (332049): Ignored create_clock at DE1_SoC_golden_top.sdc(9): Argument <targets> is an empty collection File: C:/Users/User/Documents/GitHub/CCHW/DE1_SoC/DE1_SoC_golden_top.sdc Line: 9
+Warning (332174): Ignored filter at DE1_SoC_golden_top.sdc(10): CLOCK2_50 could not be matched with a port File: C:/Users/User/Documents/GitHub/CCHW/DE1_SoC/DE1_SoC_golden_top.sdc Line: 10
+Warning (332049): Ignored create_clock at DE1_SoC_golden_top.sdc(10): Argument <targets> is an empty collection File: C:/Users/User/Documents/GitHub/CCHW/DE1_SoC/DE1_SoC_golden_top.sdc Line: 10
+Warning (332174): Ignored filter at DE1_SoC_golden_top.sdc(11): CLOCK3_50 could not be matched with a port File: C:/Users/User/Documents/GitHub/CCHW/DE1_SoC/DE1_SoC_golden_top.sdc Line: 11
+Warning (332049): Ignored create_clock at DE1_SoC_golden_top.sdc(11): Argument <targets> is an empty collection File: C:/Users/User/Documents/GitHub/CCHW/DE1_SoC/DE1_SoC_golden_top.sdc Line: 11
+Warning (332174): Ignored filter at DE1_SoC_golden_top.sdc(12): CLOCK4_50 could not be matched with a port File: C:/Users/User/Documents/GitHub/CCHW/DE1_SoC/DE1_SoC_golden_top.sdc Line: 12
+Warning (332049): Ignored create_clock at DE1_SoC_golden_top.sdc(12): Argument <targets> is an empty collection File: C:/Users/User/Documents/GitHub/CCHW/DE1_SoC/DE1_SoC_golden_top.sdc Line: 12
+Warning (332174): Ignored filter at DE1_SoC_golden_top.sdc(14): TD_CLK27 could not be matched with a port File: C:/Users/User/Documents/GitHub/CCHW/DE1_SoC/DE1_SoC_golden_top.sdc Line: 14
+Warning (332049): Ignored create_clock at DE1_SoC_golden_top.sdc(14): Argument <targets> is an empty collection File: C:/Users/User/Documents/GitHub/CCHW/DE1_SoC/DE1_SoC_golden_top.sdc Line: 14
+Warning (332174): Ignored filter at DE1_SoC_golden_top.sdc(15): DRAM_CLK could not be matched with a port File: C:/Users/User/Documents/GitHub/CCHW/DE1_SoC/DE1_SoC_golden_top.sdc Line: 15
+Warning (332049): Ignored create_clock at DE1_SoC_golden_top.sdc(15): Argument <targets> is an empty collection File: C:/Users/User/Documents/GitHub/CCHW/DE1_SoC/DE1_SoC_golden_top.sdc Line: 15
+Warning (332174): Ignored filter at DE1_SoC_golden_top.sdc(20): VGA_CLK could not be matched with a port File: C:/Users/User/Documents/GitHub/CCHW/DE1_SoC/DE1_SoC_golden_top.sdc Line: 20
+Warning (332049): Ignored create_clock at DE1_SoC_golden_top.sdc(20): Argument <targets> is an empty collection File: C:/Users/User/Documents/GitHub/CCHW/DE1_SoC/DE1_SoC_golden_top.sdc Line: 20
+Warning (332174): Ignored filter at DE1_SoC_golden_top.sdc(53): DRAM_DQ* could not be matched with a port File: C:/Users/User/Documents/GitHub/CCHW/DE1_SoC/DE1_SoC_golden_top.sdc Line: 53
+Warning (332174): Ignored filter at DE1_SoC_golden_top.sdc(53): clk_dram could not be matched with a clock File: C:/Users/User/Documents/GitHub/CCHW/DE1_SoC/DE1_SoC_golden_top.sdc Line: 53
+Warning (332049): Ignored set_input_delay at DE1_SoC_golden_top.sdc(53): Argument <targets> is an empty collection File: C:/Users/User/Documents/GitHub/CCHW/DE1_SoC/DE1_SoC_golden_top.sdc Line: 53
+Warning (332049): Ignored set_input_delay at DE1_SoC_golden_top.sdc(53): Argument -clock is not an object ID File: C:/Users/User/Documents/GitHub/CCHW/DE1_SoC/DE1_SoC_golden_top.sdc Line: 53
+Warning (332049): Ignored set_input_delay at DE1_SoC_golden_top.sdc(54): Argument <targets> is an empty collection File: C:/Users/User/Documents/GitHub/CCHW/DE1_SoC/DE1_SoC_golden_top.sdc Line: 54
+Warning (332049): Ignored set_input_delay at DE1_SoC_golden_top.sdc(54): Argument -clock is not an object ID File: C:/Users/User/Documents/GitHub/CCHW/DE1_SoC/DE1_SoC_golden_top.sdc Line: 54
+Warning (332174): Ignored filter at DE1_SoC_golden_top.sdc(56): TD_DATA* could not be matched with a port File: C:/Users/User/Documents/GitHub/CCHW/DE1_SoC/DE1_SoC_golden_top.sdc Line: 56
+Warning (332174): Ignored filter at DE1_SoC_golden_top.sdc(56): tv_27m could not be matched with a clock File: C:/Users/User/Documents/GitHub/CCHW/DE1_SoC/DE1_SoC_golden_top.sdc Line: 56
+Warning (332049): Ignored set_input_delay at DE1_SoC_golden_top.sdc(56): Argument <targets> is an empty collection File: C:/Users/User/Documents/GitHub/CCHW/DE1_SoC/DE1_SoC_golden_top.sdc Line: 56
+Warning (332049): Ignored set_input_delay at DE1_SoC_golden_top.sdc(56): Argument -clock is not an object ID File: C:/Users/User/Documents/GitHub/CCHW/DE1_SoC/DE1_SoC_golden_top.sdc Line: 56
+Warning (332049): Ignored set_input_delay at DE1_SoC_golden_top.sdc(57): Argument <targets> is an empty collection File: C:/Users/User/Documents/GitHub/CCHW/DE1_SoC/DE1_SoC_golden_top.sdc Line: 57
+Warning (332049): Ignored set_input_delay at DE1_SoC_golden_top.sdc(57): Argument -clock is not an object ID File: C:/Users/User/Documents/GitHub/CCHW/DE1_SoC/DE1_SoC_golden_top.sdc Line: 57
+Warning (332174): Ignored filter at DE1_SoC_golden_top.sdc(58): TD_HS could not be matched with a port File: C:/Users/User/Documents/GitHub/CCHW/DE1_SoC/DE1_SoC_golden_top.sdc Line: 58
+Warning (332049): Ignored set_input_delay at DE1_SoC_golden_top.sdc(58): Argument <targets> is an empty collection File: C:/Users/User/Documents/GitHub/CCHW/DE1_SoC/DE1_SoC_golden_top.sdc Line: 58
+Warning (332049): Ignored set_input_delay at DE1_SoC_golden_top.sdc(58): Argument -clock is not an object ID File: C:/Users/User/Documents/GitHub/CCHW/DE1_SoC/DE1_SoC_golden_top.sdc Line: 58
+Warning (332049): Ignored set_input_delay at DE1_SoC_golden_top.sdc(59): Argument <targets> is an empty collection File: C:/Users/User/Documents/GitHub/CCHW/DE1_SoC/DE1_SoC_golden_top.sdc Line: 59
+Warning (332049): Ignored set_input_delay at DE1_SoC_golden_top.sdc(59): Argument -clock is not an object ID File: C:/Users/User/Documents/GitHub/CCHW/DE1_SoC/DE1_SoC_golden_top.sdc Line: 59
+Warning (332174): Ignored filter at DE1_SoC_golden_top.sdc(60): TD_VS could not be matched with a port File: C:/Users/User/Documents/GitHub/CCHW/DE1_SoC/DE1_SoC_golden_top.sdc Line: 60
+Warning (332049): Ignored set_input_delay at DE1_SoC_golden_top.sdc(60): Argument <targets> is an empty collection File: C:/Users/User/Documents/GitHub/CCHW/DE1_SoC/DE1_SoC_golden_top.sdc Line: 60
+Warning (332049): Ignored set_input_delay at DE1_SoC_golden_top.sdc(60): Argument -clock is not an object ID File: C:/Users/User/Documents/GitHub/CCHW/DE1_SoC/DE1_SoC_golden_top.sdc Line: 60
+Warning (332049): Ignored set_input_delay at DE1_SoC_golden_top.sdc(61): Argument <targets> is an empty collection File: C:/Users/User/Documents/GitHub/CCHW/DE1_SoC/DE1_SoC_golden_top.sdc Line: 61
+Warning (332049): Ignored set_input_delay at DE1_SoC_golden_top.sdc(61): Argument -clock is not an object ID File: C:/Users/User/Documents/GitHub/CCHW/DE1_SoC/DE1_SoC_golden_top.sdc Line: 61
+Warning (332049): Ignored set_output_delay at DE1_SoC_golden_top.sdc(68): Argument <targets> is an empty collection File: C:/Users/User/Documents/GitHub/CCHW/DE1_SoC/DE1_SoC_golden_top.sdc Line: 68
+Warning (332049): Ignored set_output_delay at DE1_SoC_golden_top.sdc(68): Argument -clock is not an object ID File: C:/Users/User/Documents/GitHub/CCHW/DE1_SoC/DE1_SoC_golden_top.sdc Line: 68
+Warning (332049): Ignored set_output_delay at DE1_SoC_golden_top.sdc(69): Argument <targets> is an empty collection File: C:/Users/User/Documents/GitHub/CCHW/DE1_SoC/DE1_SoC_golden_top.sdc Line: 69
+Warning (332049): Ignored set_output_delay at DE1_SoC_golden_top.sdc(69): Argument -clock is not an object ID File: C:/Users/User/Documents/GitHub/CCHW/DE1_SoC/DE1_SoC_golden_top.sdc Line: 69
+Warning (332174): Ignored filter at DE1_SoC_golden_top.sdc(70): DRAM_ADDR* could not be matched with a port File: C:/Users/User/Documents/GitHub/CCHW/DE1_SoC/DE1_SoC_golden_top.sdc Line: 70
+Warning (332049): Ignored set_output_delay at DE1_SoC_golden_top.sdc(70): Argument <targets> is an empty collection File: C:/Users/User/Documents/GitHub/CCHW/DE1_SoC/DE1_SoC_golden_top.sdc Line: 70
+Warning (332049): Ignored set_output_delay at DE1_SoC_golden_top.sdc(70): Argument -clock is not an object ID File: C:/Users/User/Documents/GitHub/CCHW/DE1_SoC/DE1_SoC_golden_top.sdc Line: 70
+Warning (332049): Ignored set_output_delay at DE1_SoC_golden_top.sdc(71): Argument <targets> is an empty collection File: C:/Users/User/Documents/GitHub/CCHW/DE1_SoC/DE1_SoC_golden_top.sdc Line: 71
+Warning (332049): Ignored set_output_delay at DE1_SoC_golden_top.sdc(71): Argument -clock is not an object ID File: C:/Users/User/Documents/GitHub/CCHW/DE1_SoC/DE1_SoC_golden_top.sdc Line: 71
+Warning (332174): Ignored filter at DE1_SoC_golden_top.sdc(72): DRAM_*DQM could not be matched with a port File: C:/Users/User/Documents/GitHub/CCHW/DE1_SoC/DE1_SoC_golden_top.sdc Line: 72
+Warning (332049): Ignored set_output_delay at DE1_SoC_golden_top.sdc(72): Argument <targets> is an empty collection File: C:/Users/User/Documents/GitHub/CCHW/DE1_SoC/DE1_SoC_golden_top.sdc Line: 72
+Warning (332049): Ignored set_output_delay at DE1_SoC_golden_top.sdc(72): Argument -clock is not an object ID File: C:/Users/User/Documents/GitHub/CCHW/DE1_SoC/DE1_SoC_golden_top.sdc Line: 72
+Warning (332049): Ignored set_output_delay at DE1_SoC_golden_top.sdc(73): Argument <targets> is an empty collection File: C:/Users/User/Documents/GitHub/CCHW/DE1_SoC/DE1_SoC_golden_top.sdc Line: 73
+Warning (332049): Ignored set_output_delay at DE1_SoC_golden_top.sdc(73): Argument -clock is not an object ID File: C:/Users/User/Documents/GitHub/CCHW/DE1_SoC/DE1_SoC_golden_top.sdc Line: 73
+Warning (332174): Ignored filter at DE1_SoC_golden_top.sdc(74): DRAM_BA* could not be matched with a port File: C:/Users/User/Documents/GitHub/CCHW/DE1_SoC/DE1_SoC_golden_top.sdc Line: 74
+Warning (332049): Ignored set_output_delay at DE1_SoC_golden_top.sdc(74): Argument <targets> is an empty collection File: C:/Users/User/Documents/GitHub/CCHW/DE1_SoC/DE1_SoC_golden_top.sdc Line: 74
+Warning (332049): Ignored set_output_delay at DE1_SoC_golden_top.sdc(74): Argument -clock is not an object ID File: C:/Users/User/Documents/GitHub/CCHW/DE1_SoC/DE1_SoC_golden_top.sdc Line: 74
+Warning (332049): Ignored set_output_delay at DE1_SoC_golden_top.sdc(75): Argument <targets> is an empty collection File: C:/Users/User/Documents/GitHub/CCHW/DE1_SoC/DE1_SoC_golden_top.sdc Line: 75
+Warning (332049): Ignored set_output_delay at DE1_SoC_golden_top.sdc(75): Argument -clock is not an object ID File: C:/Users/User/Documents/GitHub/CCHW/DE1_SoC/DE1_SoC_golden_top.sdc Line: 75
+Warning (332174): Ignored filter at DE1_SoC_golden_top.sdc(76): DRAM_RAS_N could not be matched with a port File: C:/Users/User/Documents/GitHub/CCHW/DE1_SoC/DE1_SoC_golden_top.sdc Line: 76
+Warning (332049): Ignored set_output_delay at DE1_SoC_golden_top.sdc(76): Argument <targets> is an empty collection File: C:/Users/User/Documents/GitHub/CCHW/DE1_SoC/DE1_SoC_golden_top.sdc Line: 76
+Warning (332049): Ignored set_output_delay at DE1_SoC_golden_top.sdc(76): Argument -clock is not an object ID File: C:/Users/User/Documents/GitHub/CCHW/DE1_SoC/DE1_SoC_golden_top.sdc Line: 76
+Warning (332049): Ignored set_output_delay at DE1_SoC_golden_top.sdc(77): Argument <targets> is an empty collection File: C:/Users/User/Documents/GitHub/CCHW/DE1_SoC/DE1_SoC_golden_top.sdc Line: 77
+Warning (332049): Ignored set_output_delay at DE1_SoC_golden_top.sdc(77): Argument -clock is not an object ID File: C:/Users/User/Documents/GitHub/CCHW/DE1_SoC/DE1_SoC_golden_top.sdc Line: 77
+Warning (332174): Ignored filter at DE1_SoC_golden_top.sdc(78): DRAM_CAS_N could not be matched with a port File: C:/Users/User/Documents/GitHub/CCHW/DE1_SoC/DE1_SoC_golden_top.sdc Line: 78
+Warning (332049): Ignored set_output_delay at DE1_SoC_golden_top.sdc(78): Argument <targets> is an empty collection File: C:/Users/User/Documents/GitHub/CCHW/DE1_SoC/DE1_SoC_golden_top.sdc Line: 78
+Warning (332049): Ignored set_output_delay at DE1_SoC_golden_top.sdc(78): Argument -clock is not an object ID File: C:/Users/User/Documents/GitHub/CCHW/DE1_SoC/DE1_SoC_golden_top.sdc Line: 78
+Warning (332049): Ignored set_output_delay at DE1_SoC_golden_top.sdc(79): Argument <targets> is an empty collection File: C:/Users/User/Documents/GitHub/CCHW/DE1_SoC/DE1_SoC_golden_top.sdc Line: 79
+Warning (332049): Ignored set_output_delay at DE1_SoC_golden_top.sdc(79): Argument -clock is not an object ID File: C:/Users/User/Documents/GitHub/CCHW/DE1_SoC/DE1_SoC_golden_top.sdc Line: 79
+Warning (332174): Ignored filter at DE1_SoC_golden_top.sdc(80): DRAM_WE_N could not be matched with a port File: C:/Users/User/Documents/GitHub/CCHW/DE1_SoC/DE1_SoC_golden_top.sdc Line: 80
+Warning (332049): Ignored set_output_delay at DE1_SoC_golden_top.sdc(80): Argument <targets> is an empty collection File: C:/Users/User/Documents/GitHub/CCHW/DE1_SoC/DE1_SoC_golden_top.sdc Line: 80
+Warning (332049): Ignored set_output_delay at DE1_SoC_golden_top.sdc(80): Argument -clock is not an object ID File: C:/Users/User/Documents/GitHub/CCHW/DE1_SoC/DE1_SoC_golden_top.sdc Line: 80
+Warning (332049): Ignored set_output_delay at DE1_SoC_golden_top.sdc(81): Argument <targets> is an empty collection File: C:/Users/User/Documents/GitHub/CCHW/DE1_SoC/DE1_SoC_golden_top.sdc Line: 81
+Warning (332049): Ignored set_output_delay at DE1_SoC_golden_top.sdc(81): Argument -clock is not an object ID File: C:/Users/User/Documents/GitHub/CCHW/DE1_SoC/DE1_SoC_golden_top.sdc Line: 81
+Warning (332174): Ignored filter at DE1_SoC_golden_top.sdc(82): DRAM_CKE could not be matched with a port File: C:/Users/User/Documents/GitHub/CCHW/DE1_SoC/DE1_SoC_golden_top.sdc Line: 82
+Warning (332049): Ignored set_output_delay at DE1_SoC_golden_top.sdc(82): Argument <targets> is an empty collection File: C:/Users/User/Documents/GitHub/CCHW/DE1_SoC/DE1_SoC_golden_top.sdc Line: 82
+Warning (332049): Ignored set_output_delay at DE1_SoC_golden_top.sdc(82): Argument -clock is not an object ID File: C:/Users/User/Documents/GitHub/CCHW/DE1_SoC/DE1_SoC_golden_top.sdc Line: 82
+Warning (332049): Ignored set_output_delay at DE1_SoC_golden_top.sdc(83): Argument <targets> is an empty collection File: C:/Users/User/Documents/GitHub/CCHW/DE1_SoC/DE1_SoC_golden_top.sdc Line: 83
+Warning (332049): Ignored set_output_delay at DE1_SoC_golden_top.sdc(83): Argument -clock is not an object ID File: C:/Users/User/Documents/GitHub/CCHW/DE1_SoC/DE1_SoC_golden_top.sdc Line: 83
+Warning (332174): Ignored filter at DE1_SoC_golden_top.sdc(84): DRAM_CS_N could not be matched with a port File: C:/Users/User/Documents/GitHub/CCHW/DE1_SoC/DE1_SoC_golden_top.sdc Line: 84
+Warning (332049): Ignored set_output_delay at DE1_SoC_golden_top.sdc(84): Argument <targets> is an empty collection File: C:/Users/User/Documents/GitHub/CCHW/DE1_SoC/DE1_SoC_golden_top.sdc Line: 84
+Warning (332049): Ignored set_output_delay at DE1_SoC_golden_top.sdc(84): Argument -clock is not an object ID File: C:/Users/User/Documents/GitHub/CCHW/DE1_SoC/DE1_SoC_golden_top.sdc Line: 84
+Warning (332049): Ignored set_output_delay at DE1_SoC_golden_top.sdc(85): Argument <targets> is an empty collection File: C:/Users/User/Documents/GitHub/CCHW/DE1_SoC/DE1_SoC_golden_top.sdc Line: 85
+Warning (332049): Ignored set_output_delay at DE1_SoC_golden_top.sdc(85): Argument -clock is not an object ID File: C:/Users/User/Documents/GitHub/CCHW/DE1_SoC/DE1_SoC_golden_top.sdc Line: 85
+Warning (332174): Ignored filter at DE1_SoC_golden_top.sdc(87): VGA_R* could not be matched with a port File: C:/Users/User/Documents/GitHub/CCHW/DE1_SoC/DE1_SoC_golden_top.sdc Line: 87
+Warning (332174): Ignored filter at DE1_SoC_golden_top.sdc(87): clk_vga could not be matched with a clock File: C:/Users/User/Documents/GitHub/CCHW/DE1_SoC/DE1_SoC_golden_top.sdc Line: 87
+Warning (332049): Ignored set_output_delay at DE1_SoC_golden_top.sdc(87): Argument <targets> is an empty collection File: C:/Users/User/Documents/GitHub/CCHW/DE1_SoC/DE1_SoC_golden_top.sdc Line: 87
+Warning (332049): Ignored set_output_delay at DE1_SoC_golden_top.sdc(87): Argument -clock is not an object ID File: C:/Users/User/Documents/GitHub/CCHW/DE1_SoC/DE1_SoC_golden_top.sdc Line: 87
+Warning (332049): Ignored set_output_delay at DE1_SoC_golden_top.sdc(88): Argument <targets> is an empty collection File: C:/Users/User/Documents/GitHub/CCHW/DE1_SoC/DE1_SoC_golden_top.sdc Line: 88
+Warning (332049): Ignored set_output_delay at DE1_SoC_golden_top.sdc(88): Argument -clock is not an object ID File: C:/Users/User/Documents/GitHub/CCHW/DE1_SoC/DE1_SoC_golden_top.sdc Line: 88
+Warning (332174): Ignored filter at DE1_SoC_golden_top.sdc(89): VGA_G* could not be matched with a port File: C:/Users/User/Documents/GitHub/CCHW/DE1_SoC/DE1_SoC_golden_top.sdc Line: 89
+Warning (332049): Ignored set_output_delay at DE1_SoC_golden_top.sdc(89): Argument <targets> is an empty collection File: C:/Users/User/Documents/GitHub/CCHW/DE1_SoC/DE1_SoC_golden_top.sdc Line: 89
+Warning (332049): Ignored set_output_delay at DE1_SoC_golden_top.sdc(89): Argument -clock is not an object ID File: C:/Users/User/Documents/GitHub/CCHW/DE1_SoC/DE1_SoC_golden_top.sdc Line: 89
+Warning (332049): Ignored set_output_delay at DE1_SoC_golden_top.sdc(90): Argument <targets> is an empty collection File: C:/Users/User/Documents/GitHub/CCHW/DE1_SoC/DE1_SoC_golden_top.sdc Line: 90
+Warning (332049): Ignored set_output_delay at DE1_SoC_golden_top.sdc(90): Argument -clock is not an object ID File: C:/Users/User/Documents/GitHub/CCHW/DE1_SoC/DE1_SoC_golden_top.sdc Line: 90
+Warning (332174): Ignored filter at DE1_SoC_golden_top.sdc(91): VGA_B* could not be matched with a port File: C:/Users/User/Documents/GitHub/CCHW/DE1_SoC/DE1_SoC_golden_top.sdc Line: 91
+Warning (332049): Ignored set_output_delay at DE1_SoC_golden_top.sdc(91): Argument <targets> is an empty collection File: C:/Users/User/Documents/GitHub/CCHW/DE1_SoC/DE1_SoC_golden_top.sdc Line: 91
+Warning (332049): Ignored set_output_delay at DE1_SoC_golden_top.sdc(91): Argument -clock is not an object ID File: C:/Users/User/Documents/GitHub/CCHW/DE1_SoC/DE1_SoC_golden_top.sdc Line: 91
+Warning (332049): Ignored set_output_delay at DE1_SoC_golden_top.sdc(92): Argument <targets> is an empty collection File: C:/Users/User/Documents/GitHub/CCHW/DE1_SoC/DE1_SoC_golden_top.sdc Line: 92
+Warning (332049): Ignored set_output_delay at DE1_SoC_golden_top.sdc(92): Argument -clock is not an object ID File: C:/Users/User/Documents/GitHub/CCHW/DE1_SoC/DE1_SoC_golden_top.sdc Line: 92
+Warning (332174): Ignored filter at DE1_SoC_golden_top.sdc(93): VGA_BLANK could not be matched with a port File: C:/Users/User/Documents/GitHub/CCHW/DE1_SoC/DE1_SoC_golden_top.sdc Line: 93
+Warning (332049): Ignored set_output_delay at DE1_SoC_golden_top.sdc(93): Argument <targets> is an empty collection File: C:/Users/User/Documents/GitHub/CCHW/DE1_SoC/DE1_SoC_golden_top.sdc Line: 93
+Warning (332049): Ignored set_output_delay at DE1_SoC_golden_top.sdc(93): Argument -clock is not an object ID File: C:/Users/User/Documents/GitHub/CCHW/DE1_SoC/DE1_SoC_golden_top.sdc Line: 93
+Warning (332049): Ignored set_output_delay at DE1_SoC_golden_top.sdc(94): Argument <targets> is an empty collection File: C:/Users/User/Documents/GitHub/CCHW/DE1_SoC/DE1_SoC_golden_top.sdc Line: 94
+Warning (332049): Ignored set_output_delay at DE1_SoC_golden_top.sdc(94): Argument -clock is not an object ID File: C:/Users/User/Documents/GitHub/CCHW/DE1_SoC/DE1_SoC_golden_top.sdc Line: 94
+Warning (171167): Found invalid Fitter assignments. See the Ignored Assignments panel in the Fitter Compilation Report for more information.

@@ -1,0 +1,133 @@
+------------------------------------------------------------
+TimeQuest Timing Analyzer Summary
+------------------------------------------------------------
+
+Type  : Slow 1100mV 85C Model Setup 'KEY[0]'
+Slack : -7.857
+TNS   : -194.008
+
+Type  : Slow 1100mV 85C Model Setup 'LEDDriver:u_LEDDriver|ps'
+Slack : -1.542
+TNS   : -22.541
+
+Type  : Slow 1100mV 85C Model Hold 'LEDDriver:u_LEDDriver|ps'
+Slack : 0.288
+TNS   : 0.000
+
+Type  : Slow 1100mV 85C Model Hold 'KEY[0]'
+Slack : 0.703
+TNS   : 0.000
+
+Type  : Slow 1100mV 85C Model Recovery 'LEDDriver:u_LEDDriver|ps'
+Slack : -3.015
+TNS   : -51.209
+
+Type  : Slow 1100mV 85C Model Removal 'LEDDriver:u_LEDDriver|ps'
+Slack : 1.727
+TNS   : 0.000
+
+Type  : Slow 1100mV 85C Model Minimum Pulse Width 'KEY[0]'
+Slack : -0.655
+TNS   : -56.611
+
+Type  : Slow 1100mV 85C Model Minimum Pulse Width 'LEDDriver:u_LEDDriver|ps'
+Slack : -0.394
+TNS   : -8.684
+
+Type  : Slow 1100mV 0C Model Setup 'KEY[0]'
+Slack : -7.549
+TNS   : -185.209
+
+Type  : Slow 1100mV 0C Model Setup 'LEDDriver:u_LEDDriver|ps'
+Slack : -1.639
+TNS   : -23.694
+
+Type  : Slow 1100mV 0C Model Hold 'LEDDriver:u_LEDDriver|ps'
+Slack : 0.287
+TNS   : 0.000
+
+Type  : Slow 1100mV 0C Model Hold 'KEY[0]'
+Slack : 0.629
+TNS   : 0.000
+
+Type  : Slow 1100mV 0C Model Recovery 'LEDDriver:u_LEDDriver|ps'
+Slack : -3.012
+TNS   : -51.160
+
+Type  : Slow 1100mV 0C Model Removal 'LEDDriver:u_LEDDriver|ps'
+Slack : 1.733
+TNS   : 0.000
+
+Type  : Slow 1100mV 0C Model Minimum Pulse Width 'KEY[0]'
+Slack : -0.672
+TNS   : -59.912
+
+Type  : Slow 1100mV 0C Model Minimum Pulse Width 'LEDDriver:u_LEDDriver|ps'
+Slack : -0.394
+TNS   : -8.730
+
+Type  : Fast 1100mV 85C Model Setup 'KEY[0]'
+Slack : -5.927
+TNS   : -145.642
+
+Type  : Fast 1100mV 85C Model Setup 'LEDDriver:u_LEDDriver|ps'
+Slack : -0.527
+TNS   : -7.374
+
+Type  : Fast 1100mV 85C Model Hold 'KEY[0]'
+Slack : -0.002
+TNS   : -0.002
+
+Type  : Fast 1100mV 85C Model Hold 'LEDDriver:u_LEDDriver|ps'
+Slack : 0.096
+TNS   : 0.000
+
+Type  : Fast 1100mV 85C Model Recovery 'LEDDriver:u_LEDDriver|ps'
+Slack : -2.055
+TNS   : -34.925
+
+Type  : Fast 1100mV 85C Model Removal 'LEDDriver:u_LEDDriver|ps'
+Slack : 0.678
+TNS   : 0.000
+
+Type  : Fast 1100mV 85C Model Minimum Pulse Width 'KEY[0]'
+Slack : -0.725
+TNS   : -56.658
+
+Type  : Fast 1100mV 85C Model Minimum Pulse Width 'LEDDriver:u_LEDDriver|ps'
+Slack : 0.145
+TNS   : 0.000
+
+Type  : Fast 1100mV 0C Model Setup 'KEY[0]'
+Slack : -5.071
+TNS   : -124.579
+
+Type  : Fast 1100mV 0C Model Setup 'LEDDriver:u_LEDDriver|ps'
+Slack : -0.475
+TNS   : -6.580
+
+Type  : Fast 1100mV 0C Model Hold 'KEY[0]'
+Slack : -0.136
+TNS   : -0.439
+
+Type  : Fast 1100mV 0C Model Hold 'LEDDriver:u_LEDDriver|ps'
+Slack : 0.084
+TNS   : 0.000
+
+Type  : Fast 1100mV 0C Model Recovery 'LEDDriver:u_LEDDriver|ps'
+Slack : -2.050
+TNS   : -34.830
+
+Type  : Fast 1100mV 0C Model Removal 'LEDDriver:u_LEDDriver|ps'
+Slack : 0.651
+TNS   : 0.000
+
+Type  : Fast 1100mV 0C Model Minimum Pulse Width 'KEY[0]'
+Slack : -0.750
+TNS   : -61.712
+
+Type  : Fast 1100mV 0C Model Minimum Pulse Width 'LEDDriver:u_LEDDriver|ps'
+Slack : 0.140
+TNS   : 0.000
+
+------------------------------------------------------------
