@@ -14,7 +14,7 @@ module LEDDriver #(
     input  logic clk, rst                   // standard inputs
 );
 
-    localparam waitCntrSize = $clog2(FREQ/2000); // 500 us wait
+    localparam waitCntrSize = $clog2(FREQ/1000); // 1~2 ms wait
     localparam loadCntrSize = $clog2(LEDS*24);   // one # per line
 
     // TODO: counters can be optimized for "fast counting"
@@ -41,7 +41,7 @@ module LEDDriver #(
     end
 
     // counter update logic
-    always_ff @(posedge clk) begin : ps_output
+    always_ff @(negedge clk) begin : ps_output
         if (rst) begin
             waitCntr <= '0;
             loadCntr <= '0;

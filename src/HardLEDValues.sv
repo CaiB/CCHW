@@ -33,7 +33,7 @@ module HardLEDValues #(
 
         // alternate between 8 solid colors
         else if (COMPLEXITY == 1) begin
-            case(counter[13:11])
+            case(counter[11:9])
                 'd0: led_rgb = {LEDS{24'h000000}};  // no light
                 'd1: led_rgb = {LEDS{24'h0000ff}};  // blue
                 'd2: led_rgb = {LEDS{24'h00ff00}};  // green
@@ -49,7 +49,7 @@ module HardLEDValues #(
 
         // alternate between equal splits of colors
         else begin
-            case(counter[13:11])
+            case(counter[9:7])
                 'd0: led_rgb = {{(LEDS/2){24'h000000}}, {(LEDS-(LEDS/2)){24'hffffff}}};  // black, white
                 'd1: led_rgb = {{(LEDS/2){24'h0000ff}}, {(LEDS-(LEDS/2)){24'h000000}}};  // blue, black
                 'd2: led_rgb = {{(LEDS/2){24'h00ff00}}, {(LEDS-(LEDS/2)){24'h0000ff}}};  // green, blue

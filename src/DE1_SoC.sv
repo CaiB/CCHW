@@ -28,19 +28,19 @@ module DE1_SoC (HEX0, HEX1, HEX2, HEX3, HEX4, HEX5, KEY, LEDR, SW, GPIO_0, CLOCK
 
 	logic start, done;
 	logic [(24*LEDS)-1:0] led_rgb;
-	logic [1:0] clk_divider;
+	logic [5:0] clk_divider;
 	logic rst, clk;
 	
 
-	always_ff @(CLOCK50) begin
+	always_ff @(posedge CLOCK50) begin
 		clk_divider <= rst ? '0 : clk_divider + 1'b1;
 	end
 
-	assign clk = clk_divider[1]; 
+	assign clk = clk_divider[5]; 
 
 	LEDDriver #(
         .LEDS(LEDS), 
-        .FREQ(12_500_000)
+        .FREQ(781250)
     ) u_LEDDriver (
         .dOut    (GPIO_0[18]),	// using 18 because I think it already has resistance in series
         .clkOut  (GPIO_0[19]),	// using 18 because I think it already has resistance in series
