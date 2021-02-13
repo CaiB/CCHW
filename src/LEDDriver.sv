@@ -14,6 +14,8 @@ module LEDDriver #(
     input  logic clk, rst                   // standard inputs
 );
 
+    initial assert (FREQ <= 25_000_000); // WS2801 LEDs take a maximum frequency of 25 MHz
+
     localparam waitCntrSize = $clog2(FREQ/1000); // 1~2 ms wait
     localparam loadCntrSize = $clog2(LEDS*24);   // one # per line
 
@@ -41,20 +43,20 @@ module LEDDriver #(
     end
 
     // counter update logic
-    always_ff @(negedge clk) begin : ps_output
+    always_ff @(negedge clk) begin : ns_output
         if (rst) begin
             waitCntr <= '0;
             loadCntr <= '0;
         end
 
         else begin
-            waitCntr <= (ps == waitState) ? waitCntr + 1 : '0;
-            loadCntr <= (ps == loadState) ? loadCntr + 1 : '0;
+            waitCntr <= (ns == waitState) ? waitCntr + 1 : '0;
+            loadCntr <= (ns == loadState) ? loadCntr + 1 : '0;
         end
     end
 
     // output logic
-    assign dOut   = led_rgb[LEDS*24 - 1 - loadCntr] && (ps == loadState);   // reads data from msb to lsb
+    assign dOut   = led_rgb[LEDS*24 - 1 - loadCntr] && (ns == loadState);   // reads data from msb to lsb
     assign clkOut = clk && (ps == loadState);
     assign done   = (ps == waitState);
 
@@ -94,8 +96,10 @@ module LEDDriver_testbench();
         forever #(TB_PERIOD/2) clk = ~clk;
     end
 
-    task loadColor (input [23:0] rgb);
+    task loadColor (input [23:0] rgb, output success);
         begin
+
+            success = 1;
 
             // waits until the the first rising edge of the load state
             wait(done);
@@ -105,12 +109,18 @@ module LEDDriver_testbench();
             
             // checks data 5ps after clock edge for defined behavior
             for (i = 0; i < 24; i++) begin
-                #5ps assert(dOut == rgb[23 - i]) 
-                    else $display("time = %0t expected = %b recieved = %b", $time, rgb[23 - i], dOut);
+                // assert that output value is expected
+                assert(dOut == rgb[23 - i]) else begin
+                    $display("time = %0t expected = %b recieved = %b", $time, rgb[23 - i], dOut);
+                    success = 0;
+                end
+                // wait for the next output
                 @(posedge clk);    
             end
         end
     endtask
+
+    assert property (@(posedge clk, negedge clk) $changed(dOut) |-> ##1 $rose(clkOut));
 
     initial begin
         $timeformat(-9, 2, " ns", 20);  // formats to ns
@@ -118,12 +128,14 @@ module LEDDriver_testbench();
         rst <= '1; repeat(5) @(posedge clk);
         rst <= '0;
 
-        loadColor(24'h800000);
-        loadColor(24'hffffff);
-        loadColor(24'h555555);
-        loadColor(24'h000001);
-    
-        $display("If no assertions errors appeared the simulation was a success");
+        loadColor(24'h800000, i);
+        assert(i) $display("successfully loaded %h", 24'h800000); else $error("failed loading %h", 24'h800000);
+        loadColor(24'hffffff, i);
+        assert(i) $display("successfully loaded %h", 24'hffffff); else $error("failed loading %h", 24'hffffff);
+        loadColor(24'h555555, i);
+        assert(i) $display("successfully loaded %h", 24'h555555); else $error("failed loading %h", 24'h555555);
+        loadColor(24'h000001, i);
+        assert(i) $display("successfully loaded %h", 24'h000001); else $error("failed loading %h", 24'h000001);
 
         $stop();
     end
