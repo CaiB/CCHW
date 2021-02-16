@@ -78,11 +78,11 @@ def HsvToRGB(hue, sat, value) :
             G = value
             B = value
 
-    r = Clamp(R*255)
-    g = Clamp(G*255)
-    b = Clamp(B*255)
+    r = Clamp(math.floor(R*255))
+    g = Clamp(math.floor(G*255))
+    b = Clamp(math.floor(B*255))
 
-    return (r,g,b)
+    return (hex(r),hex(g),hex(b))
 
 def Clamp(i) :
     if (i < 0) :
@@ -106,14 +106,18 @@ LEDLimit = 1.0
 SatuartionAmplifier = 1.6
 
 # these are floating point values
-NoteAmplitudes = [-1.0 for x in range(0, BIN_QTY)]    # amplitudes of each note
-NotePositions  = [-1.0 for x in range(0, BIN_QTY)]    # location of notes in range [0,1]
+NoteAmplitudes = [0 for x in range(0, BIN_QTY)]    # amplitudes of each note
+NotePositions  = [0 for x in range(0, BIN_QTY)]    # location of notes in range [0,1]
+NoteAmplitudes[0] = 1
+
+#NoteAmplitudes = [0.586363, 0.700599, 0.439384162, 0, 0, 0, 0, 0, 0, 0, 0, 0]
+#NotePositions = [0.483611822, 0.261237949, 0.843279064, 0.9416283, 0.7759455, 0.6389774, 0.3373046, 0.5607608, 0.03857844, -4.16666651, -4.16666651, 0]
 AmplitudeSum = 0.0
 
 # initiate values "using" inputs BaseNoteFinder.Notes[i].Position and BaseNoteFinder.Notes[i].AmplitudeFiltered
 for i in range(0, BIN_QTY) :
-    NotePositions[i]  = random.randint(0,12) / OctaveBinCount       # BaseNoteFinder.Notes[i].Position is being replaced by random number, final range should be 0-1
-    NoteAmplitudes[i] = math.pow(random.randint(0,10), LightSiding) # BaseNoteFinder.Notes[i].AmplitudeFiltered is being replaced by a random number, no range constraints know
+    NotePositions[i]  = random.random()        # BaseNoteFinder.Notes[i].Position is being replaced by random number, final range should be 0-1
+    NoteAmplitudes[i] = math.pow(random.randint(0,100), LightSiding) # BaseNoteFinder.Notes[i].AmplitudeFiltered is being replaced by a random number, no range constraints know
     AmplitudeSum += NoteAmplitudes[i]
 
 # remove notes that are weaker than threshold
@@ -165,4 +169,3 @@ for LED in range(0, LEDCount) :
     OutputDataDiscrete[LED] = Color
 
 print(OutputDataDiscrete)
-

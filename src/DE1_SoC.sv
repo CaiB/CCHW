@@ -40,10 +40,10 @@ module DE1_SoC (HEX0, HEX1, HEX2, HEX3, HEX4, HEX5, KEY, LEDR, SW, GPIO_0, CLOCK
 
 	LEDDriver #(
         .LEDS(LEDS), 
-        .FREQ(781250)
+        .FREQ(781_250)
     ) u_LEDDriver (
         .dOut    (GPIO_0[18]),	// using 18 because I think it already has resistance in series
-        .clkOut  (GPIO_0[19]),	// using 18 because I think it already has resistance in series
+        .clkOut  (GPIO_0[19]),	// using 19 because I think it already has resistance in series
         .done    (done   ),
         .led_rgb (led_rgb),
         .start   (start  ),
