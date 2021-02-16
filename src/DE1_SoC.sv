@@ -23,7 +23,7 @@ module DE1_SoC (HEX0, HEX1, HEX2, HEX3, HEX4, HEX5, KEY, LEDR, SW, GPIO_0, CLOCK
 
 
 	localparam LEDS = 50;		// number of leds being driver
-	localparam COMPLEXITY = 2;	// see HardLEDValues.sv header comment for explanation
+	localparam COMPLEXITY = 3;	// see HardLEDValues.sv header comment for explanation
 	assign rst = ~KEY[0];
 
 	logic start, done;

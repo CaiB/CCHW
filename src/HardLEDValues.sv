@@ -20,6 +20,8 @@ module HardLEDValues #(
     //       this is aimed at 1Hz color changes
     logic [13:0] counter;
 
+    logic [(24*LEDS)-1:0] coolrgbeffect;
+
     always_ff @(posedge done, posedge rst) begin
         counter <= rst ? '0 : counter + 1;
     end
@@ -48,7 +50,7 @@ module HardLEDValues #(
         end
 
         // alternate between equal splits of colors
-        else begin
+        else if (COMPLEXITY == 2) begin
             case(counter[9:7])
                 'd0: led_rgb = {{(LEDS/2){24'h000000}}, {(LEDS-(LEDS/2)){24'hffffff}}};  // black, white
                 'd1: led_rgb = {{(LEDS/2){24'h0000ff}}, {(LEDS-(LEDS/2)){24'h000000}}};  // blue, black
@@ -62,7 +64,24 @@ module HardLEDValues #(
                 default: led_rgb = {LEDS{24'hff8e03}}; // orange
             endcase
         end
+
+        else
+        begin
+            led_rgb = coolrgbeffect;
+        end
     end
+
+    genvar i;
+    generate
+        for(i = 0; i < LEDS; i++)
+        begin : thisstupidthingneedsanameandidontknowwhy
+            logic [10:0] icounter;
+            assign icounter = counter + (i << 6);
+            assign coolrgbeffect[((i + 1) * 24) - 1:(i * 24)] = {(icounter[9] ? 8'd255 - icounter[8:1] : icounter[8:1]) & {8{~icounter[10]}},
+                    (~icounter[9] ? 8'd255 - icounter[8:1] : icounter[8:1]) & {8{icounter[9] ^ icounter[10]}},
+                    (icounter[9] ? 8'd255 - icounter[8:1] : icounter[8:1]) & {8{icounter[10]}} };
+        end
+    endgenerate
 
     assign start = done;
 
