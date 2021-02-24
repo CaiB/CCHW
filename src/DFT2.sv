@@ -23,8 +23,8 @@ module DFT
     // Active octave selection
     // Generates the write pulses for each of the octaves at the correct intervals
     logic [OC-1:0] OctaveCounter;
-    assign OctaveCounter[0] = Processing;
-    WritePulseGen #(.N(OC-1)) PulseGen(.writeLines(OctaveCounter[OC-1:1]), .incr(OctaveProcessingFinished), .clk, .rst);
+    assign OctaveCounter[0] = readSample & ~Processing;
+    WritePulseGen #(.N(OC-1)) PulseGen(.writeLines(OctaveCounter[OC-1:1]), .incr(readSample & ~Processing), .clk, .rst);
 
     // Octave operation counter
     logic [$clog2(OC)-1:0] ActiveOctave;
@@ -42,9 +42,11 @@ module DFT
     // Octaves
     // Each octave gets 1 bit wider to accomodate addition of previous octave's samples
     logic signed [N:0] Octave1to2;
+    logic signed [N+1:0] Octave2to3;
     OctaveManager #(.BINS(BPO), .SIZE(TOPSIZE), .N(N), .NO(ND)) Octave1(.nextOctave(Octave1to2), .magnitude(outBins[96:119]), .trigPosReq(TrigTablePositions[0]),
-                  .newSample(inputSample), .readSample(OctaveCounter), .enable(ActiveOctave == 0), .sinData(SinOutput), .cosData(CosOutput), .mathOp(CurrentOctaveOp), .bin(CurrentOctaveBinIndex), .clk, .rst);
-    //OctaveManager #(.BINS(BPO), .SIZE(TOPSIZE/2), .N(N+1), .NO((N*2)+1)) Octave2();
+                  .newSample(inputSample), .readSample(OctaveCounter[0]), .enable(ActiveOctave == 0), .sinData(SinOutput), .cosData(CosOutput), .mathOp(CurrentOctaveOp), .bin(CurrentOctaveBinIndex), .clk, .rst);
+    OctaveManager #(.BINS(BPO), .SIZE(TOPSIZE/2), .N(N+1), .NO(ND)) Octave2(.nextOctave(Octave2to3), .magnitude(outBins[72:95]), .trigPosReq(TrigTablePositions[1]),
+                  .newSample(Octave1to2), .readSample(OctaveCounter[1]), .enable(ActiveOctave == 1), .sinData(SinOutput), .cosData(CosOutput), .mathOp(CurrentOctaveOp), .bin(CurrentOctaveBinIndex), .clk, .rst);
     //OctaveManager #(.BINS(BPO), .SIZE(TOPSIZE/4), .N(N+2), .NO((N*2)+2)) Octave3();
     //OctaveManager #(.BINS(BPO), .SIZE(TOPSIZE/8), .N(N+3), .NO((N*2)+3)) Octave4();
     //OctaveManager #(.BINS(BPO), .SIZE(TOPSIZE/16), .N(N+4), .NO((N*2)+4)) Octave5();
@@ -57,18 +59,19 @@ endmodule
 // N is for input sample
 // NO is for output magnitude
 // NS is trig table address width
+// NT is for trig value width
 module OctaveManager
-#(parameter BINS = 24, parameter SIZE = 8192, parameter N = 16, parameter NO = 32, parameter NS = 6)
+#(parameter BINS = 24, parameter SIZE = 8192, parameter N = 16, parameter NT = 16, parameter NO = 32, parameter NS = 6)
 (
-    output logic signed [N:0] nextOctave,
-    output logic [NO-1:0] magnitude [0:BINS-1],
-    output logic [NS-1:0] trigPosReq,
-    input logic signed [N-1:0] newSample,
-    input logic signed [N-1:0] sinData, cosData,
-    input logic readSample,
-    input logic enable,
-    input logic mathOp,
-    input logic [$clog2(BINS)-1:0] bin,
+    output logic signed [N:0] nextOctave, // the sum of 2 samples to write into the next octave down (resampling)
+    output logic [NO-1:0] magnitude [0:BINS-1], // the output magnitudes for each bin in this octave
+    output logic [NS-1:0] trigPosReq, // what location in the trig tables we want to read from
+    input logic signed [N-1:0] newSample, // the new audio sample to process
+    input logic signed [NT-1:0] sinData, cosData, // the sin and cos values at the location we requested using `trigPosReq`
+    input logic enable, // whether this octave is currently active
+    input logic readSample, // whether we should push the input sample data into storage this cycle
+    input logic mathOp, // whether we are subtracting old data (false/first), or adding new data to our running sum (true/second)
+    input logic [$clog2(BINS)-1:0] bin, // which bin to process now
     input logic clk, rst
 );
     logic [NS-1:0] CurrentTrigTablePos, EndTrigTablePos;
@@ -77,7 +80,7 @@ module OctaveManager
     assign trigPosReq = mathOp ? CurrentTrigTablePos : EndTrigTablePos;
 
     logic signed [N-1:0] sample0, sample1, oldestSample;
-    OctaveStorage #(.SIZE(SIZE), .N(N)) OctaveData(.sample0, .sample1, .oldestSample, .newSample, .writeSample(enable), .clk, .rst);
+    OctaveStorage #(.SIZE(SIZE), .N(N)) OctaveData(.sample0, .sample1, .oldestSample, .newSample, .writeSample(readSample), .clk, .rst);
     assign nextOctave = sample0 + sample1;
 
     logic signed [N-1:0] SampleOperand; // Whatever sample we are currently operating on
@@ -105,7 +108,7 @@ module OctaveManager
         end 
         else if(~mathOp && enable) // subtracting
         begin
-            SinSum[bin] <= SinSum[bin] - SinProd;
+            SinSum[bin] <= SinSum[bin] - SinProd; // TODO: Consider squishing these back down to 16 bit, we probably don't need the precision
             CosSum[bin] <= CosSum[bin] - CosProd;
         end
         else if(mathOp && enable) // add and calc mag (we only need to do this here as subtraction happens right before addition)
@@ -197,13 +200,13 @@ module OctaveStorage
 );
     logic signed [SIZE-1:0][N-1:0] Inter;
 
-    SampleRegister Reg0(.out(Inter[0]), .in(newSample), .en(writeSample), .clk, .rst);
+    SampleRegister #(.N(N)) Reg0(.out(Inter[0]), .in(newSample), .en(writeSample), .clk, .rst);
 
     genvar i;
     generate
         for(i = 1; i < SIZE; i++)
         begin : MakeTopOctStorage
-            SampleRegister Reg(.out(Inter[i]), .in(Inter[i - 1]), .en(writeSample), .clk, .rst);
+            SampleRegister #(.N(N)) Reg(.out(Inter[i]), .in(Inter[i - 1]), .en(writeSample), .clk, .rst);
         end
     endgenerate
 

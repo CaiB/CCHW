@@ -42,8 +42,8 @@ module TableCounters
     logic unsigned [N-1:0] Counters [0:BINS-1];
     assign counterOut = Counters[bin];
 
-    logic unsigned [$clog2(BINS)-1:0] BinMax [0:BINS-1];
-    logic unsigned [$clog2(BINS)-1:0] ThisBinMax;
+    logic unsigned [N-1:0] BinMax [0:BINS-1];
+    logic unsigned [N-1:0] ThisBinMax;
     // This line is taken directly from the last terminal output from the GenerateTables.ps1 script.
     assign BinMax = { 6'd55, 6'd53, 6'd52, 6'd51, 6'd49, 6'd48, 6'd46, 6'd45, 6'd44, 6'd43, 6'd41, 6'd40, 6'd39, 6'd38, 6'd37, 6'd36, 6'd35, 6'd34, 6'd33, 6'd32, 6'd31, 6'd30, 6'd29, 6'd29 };
     assign ThisBinMax = BinMax[bin];

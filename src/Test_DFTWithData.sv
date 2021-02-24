@@ -8,7 +8,7 @@ module Test_DFT;
     logic readSample;
     logic clk, rst;
 
-    DFT #(.BPO(24), .OC(5), .N(16)) DFTDUT(.outBins, .inputSample, .readSample, .clk, .rst);
+    DFT #(.BPO(24), .OC(5), .N(16), .TOPSIZE(2048)) DFTDUT(.outBins, .inputSample, .readSample, .clk, .rst);
 
     logic signed [15:0] InputData [0:LEN-1];
     initial $readmemh("../other/dfttestdata.txt", InputData);
