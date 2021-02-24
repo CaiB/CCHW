@@ -31,13 +31,15 @@ module Test_DFT;
     endtask
 
     task InsertData(int samples);
-        readSample = '1;
         for(int i = 0; i < samples; i++)
         begin
+            readSample = '1;
             inputSample = InputData[i];
-            repeat(150) @(posedge clk);
+            @(posedge clk);
+            readSample = '0;
+            repeat(250) @(posedge clk);
+            $display("Sample %4d finished", i);
         end
-        readSample = '0;
     endtask
 
     task CheckOutputs;

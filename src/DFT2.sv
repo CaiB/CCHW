@@ -24,7 +24,7 @@ module DFT
     // Generates the write pulses for each of the octaves at the correct intervals
     logic [OC-1:0] OctaveCounter;
     assign OctaveCounter[0] = Processing;
-    WritePulseGen #(.N(OC-1)) PulseGen(.writeLines(OctaveCounter[OC-1:1]), .incr(Processing), .clk, .rst);
+    WritePulseGen #(.N(OC-1)) PulseGen(.writeLines(OctaveCounter[OC-1:1]), .incr(OctaveProcessingFinished), .clk, .rst);
 
     // Octave operation counter
     logic [$clog2(OC)-1:0] ActiveOctave;
@@ -43,7 +43,7 @@ module DFT
     // Each octave gets 1 bit wider to accomodate addition of previous octave's samples
     logic signed [N:0] Octave1to2;
     OctaveManager #(.BINS(BPO), .SIZE(TOPSIZE), .N(N), .NO(ND)) Octave1(.nextOctave(Octave1to2), .magnitude(outBins[96:119]), .trigPosReq(TrigTablePositions[0]),
-                  .newSample(inputSample), .readSample, .enable(OctaveCounter[0]), .sinData(SinOutput), .cosData(CosOutput), .mathOp(CurrentOctaveOp), .bin(CurrentOctaveBinIndex), .clk, .rst);
+                  .newSample(inputSample), .readSample(OctaveCounter), .enable(ActiveOctave == 0), .sinData(SinOutput), .cosData(CosOutput), .mathOp(CurrentOctaveOp), .bin(CurrentOctaveBinIndex), .clk, .rst);
     //OctaveManager #(.BINS(BPO), .SIZE(TOPSIZE/2), .N(N+1), .NO((N*2)+1)) Octave2();
     //OctaveManager #(.BINS(BPO), .SIZE(TOPSIZE/4), .N(N+2), .NO((N*2)+2)) Octave3();
     //OctaveManager #(.BINS(BPO), .SIZE(TOPSIZE/8), .N(N+3), .NO((N*2)+3)) Octave4();
@@ -72,19 +72,19 @@ module OctaveManager
     input logic clk, rst
 );
     logic [NS-1:0] CurrentTrigTablePos, EndTrigTablePos;
-    TableCounters #(.BINS(BINS)) TrigTableCountersCur(.counterOut(CurrentTrigTablePos), .bin, .increment(enable), .clk, .rst);
-    TableCounters #(.BINS(BINS)) TrigTableCountersEnd(.counterOut(EndTrigTablePos), .bin, .increment(enable), .clk, .rst);
+    TableCounters #(.BINS(BINS)) TrigTableCountersCur(.counterOut(CurrentTrigTablePos), .bin, .increment(mathOp && enable), .clk, .rst);
+    TableCounters #(.BINS(BINS)) TrigTableCountersEnd(.counterOut(EndTrigTablePos), .bin, .increment(~mathOp && enable), .clk, .rst);
     assign trigPosReq = mathOp ? CurrentTrigTablePos : EndTrigTablePos;
 
-    logic [N-1:0] sample0, sample1, oldestSample;
+    logic signed [N-1:0] sample0, sample1, oldestSample;
     OctaveStorage #(.SIZE(SIZE), .N(N)) OctaveData(.sample0, .sample1, .oldestSample, .newSample, .writeSample(enable), .clk, .rst);
     assign nextOctave = sample0 + sample1;
 
-    logic [N-1:0] SampleOperand; // Whatever sample we are currently operating on
+    logic signed [N-1:0] SampleOperand; // Whatever sample we are currently operating on
     logic signed [NO-1:0] SinProd, CosProd; // The sin and cos products for the current sample
 
     localparam SUMSIZE = $clog2(SIZE) + NO;
-    logic signed [SUMSIZE-1:0] SinSum, CosSum; // The current cumulative sum of all samples' sin/cos products
+    logic signed [SUMSIZE-1:0] SinSum [0:BINS-1], CosSum [0:BINS-1]; // The current cumulative sum of all samples' sin/cos products
     logic signed [SUMSIZE-1:0] AbsSinSum, AbsCosSum;
 
     always_comb
@@ -92,26 +92,26 @@ module OctaveManager
         SampleOperand = mathOp ? sample0 : oldestSample;
         SinProd = sinData * SampleOperand;
         CosProd = cosData * SampleOperand;
-        AbsSinSum = (SinSum < 0) ? -SinSum : SinSum;
-        AbsCosSum = (CosSum < 0) ? -CosSum : CosSum;
+        AbsSinSum = (SinSum[bin] < 0) ? -SinSum[bin] : SinSum[bin];
+        AbsCosSum = (CosSum[bin] < 0) ? -CosSum[bin] : CosSum[bin];
     end
 
     always_ff @(posedge clk)
     begin
         if(rst)
         begin
-            SinSum <= '0;
-            CosSum <= '0;
+            SinSum <= '{default:0};
+            CosSum <= '{default:0};
         end 
-        else if(~mathOp) // subtracting
+        else if(~mathOp && enable) // subtracting
         begin
-            SinSum <= SinSum - SinProd;
-            CosSum <= CosSum - CosProd;
+            SinSum[bin] <= SinSum[bin] - SinProd;
+            CosSum[bin] <= CosSum[bin] - CosProd;
         end
-        else if(mathOp) // add and calc mag (we only need to do this here as subtraction happens right before addition)
+        else if(mathOp && enable) // add and calc mag (we only need to do this here as subtraction happens right before addition)
         begin
-            SinSum <= SinSum + SinProd;
-            CosSum <= CosSum + CosProd;
+            SinSum[bin] <= SinSum[bin] + SinProd;
+            CosSum[bin] <= CosSum[bin] + CosProd;
             if(AbsSinSum > AbsCosSum) magnitude[bin] <= (AbsSinSum + (AbsCosSum >>> 1)); // TODO This might be too slow, potentially requiring breaking into another cycle.
             else                      magnitude[bin] <= (AbsCosSum + (AbsSinSum >>> 1));
         end
