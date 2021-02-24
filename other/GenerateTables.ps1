@@ -14,10 +14,13 @@ $SampleCounts = "";
 
 Write-Host ("Generating sin & cos tables with {0} bins, starting at {1}Hz, for sample rate {2}Hz, amplitude {3}." -F $BinCount, $StartFreq, $SampleRate, $MagMultiplier);
 
+$BinBitCount = [Math]::Ceiling([Math]::Log($SampleRate / $StartFreq, 2));
+Write-Host "Address size of waves in table will be $BinBitCount.";
+
 for($Bin = 0; $Bin -LT $BinCount; $Bin++)
 {
     $Freq = $StartFreq * [Math]::Pow(2, $Bin / $BinCount);
-    $SampleCounts += ("{0}, " -F [Math]::Ceiling($SampleRate / $Freq));
+    $SampleCounts += ("$BinBitCount'd{0}, " -F [Math]::Ceiling($SampleRate / $Freq));
     Write-Host ("Freq at bin $Bin is {0:F3} Hz" -F [double]$Freq);
 
     for($Sample = 0; $Sample -LT 64; $Sample++) # This assumes all waves fit in 64 length.
