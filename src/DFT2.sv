@@ -6,29 +6,18 @@ module DFT
 (
     output logic unsigned [ND-1:0] outBins [0:(BPO*OC)-1],
     input logic signed [N-1:0] inputSample, // New audio data to add
-    input logic readSample, // Whether to read new audio data this cycle
+    input logic sampleReady, // Whether to new audio data is ready
     input logic clk, rst
 );
-    logic OctaveProcessingFinished;
-
-    // Extremely simple state machine
-    logic Processing, ProcessingNext;
-    always_ff @(posedge clk)
-        if(rst) Processing <= '0;
-        else Processing <= ProcessingNext;
-    always_comb
-        if(Processing) ProcessingNext = ~OctaveProcessingFinished;
-        else ProcessingNext = readSample;
-
-    // Generates the write pulses for each of the octaves at the correct intervals
-    logic [OC-1:0] OctaveCounter;
-    WritePulseGen #(.N(OC)) PulseGen(.writeLines(OctaveCounter), .sampleReady(readSample), .processing(Processing), .clk, .rst);
-
-    // Octave operation counter
+    // Active octave and operation selection
     logic [$clog2(OC)-1:0] ActiveOctave;
     logic CurrentOctaveOp;
     logic [$clog2(BPO)-1:0] CurrentOctaveBinIndex;
-    OperationCounter #(.OCT(OC), .BINS(BPO)) OpCounter(.octave(ActiveOctave), .operation(CurrentOctaveOp), .bin(CurrentOctaveBinIndex), .finished(OctaveProcessingFinished), .enable(Processing), .clk, .rst);
+    logic DoWrites, AdvanceOctave, ReadyToRead;
+    OperationManager #(.OCT(OC), .BINS(BPO)) OpMgr(.octave(ActiveOctave), .operation(CurrentOctaveOp), .bin(CurrentOctaveBinIndex), .ready(ReadyToRead), .writeSample(DoWrites), .finishedProcessing(AdvanceOctave), .sampleReady, .clk, .rst);
+
+    logic [OC-1:0] EnableOctaves;
+    OctaveSelector #(.OCT(OC)) OctSel(.enableOctaves(EnableOctaves), .incr(AdvanceOctave), .clk, .rst);
 
     // Sin and cos tables
     localparam NS = 6; // trig table adddress width, set by script
@@ -41,18 +30,23 @@ module DFT
     // Each octave gets 1 bit wider to accomodate addition of previous octave's samples
     logic signed [N:0] Octave1to2;
     logic signed [N+1:0] Octave2to3;
+    logic signed [N+2:0] Octave3to4;
+    logic signed [N+3:0] Octave4to5;
+    logic signed [N+4:0] Octave5to6;
     OctaveManager #(.BINS(BPO), .SIZE(TOPSIZE), .N(N), .NO(ND)) Octave1(.nextOctave(Octave1to2), .magnitude(outBins[96:119]), .trigPosReq(TrigTablePositions[0]),
-                  .newSample(inputSample), .readSample(OctaveCounter[0]), .enable(ActiveOctave == 0), .sinData(SinOutput), .cosData(CosOutput), .mathOp(CurrentOctaveOp), .bin(CurrentOctaveBinIndex), .clk, .rst);
+                  .newSample(inputSample), .readSample(EnableOctaves[0] & DoWrites), .enable(EnableOctaves[0] & ActiveOctave == 0), .sinData(SinOutput), .cosData(CosOutput), .mathOp(CurrentOctaveOp), .bin(CurrentOctaveBinIndex), .clk, .rst);
     OctaveManager #(.BINS(BPO), .SIZE(TOPSIZE/2), .N(N+1), .NO(ND)) Octave2(.nextOctave(Octave2to3), .magnitude(outBins[72:95]), .trigPosReq(TrigTablePositions[1]),
-                  .newSample(Octave1to2), .readSample(OctaveCounter[1]), .enable(ActiveOctave == 1), .sinData(SinOutput), .cosData(CosOutput), .mathOp(CurrentOctaveOp), .bin(CurrentOctaveBinIndex), .clk, .rst);
-    //OctaveManager #(.BINS(BPO), .SIZE(TOPSIZE/4), .N(N+2), .NO((N*2)+2)) Octave3();
-    //OctaveManager #(.BINS(BPO), .SIZE(TOPSIZE/8), .N(N+3), .NO((N*2)+3)) Octave4();
-    //OctaveManager #(.BINS(BPO), .SIZE(TOPSIZE/16), .N(N+4), .NO((N*2)+4)) Octave5();
+                  .newSample(Octave1to2), .readSample(EnableOctaves[1] & DoWrites), .enable(EnableOctaves[1] & ActiveOctave == 1), .sinData(SinOutput), .cosData(CosOutput), .mathOp(CurrentOctaveOp), .bin(CurrentOctaveBinIndex), .clk, .rst);
+    OctaveManager #(.BINS(BPO), .SIZE(TOPSIZE/4), .N(N+2), .NO(ND)) Octave3(.nextOctave(Octave3to4), .magnitude(outBins[48:71]), .trigPosReq(TrigTablePositions[2]),
+                  .newSample(Octave2to3), .readSample(EnableOctaves[2] & DoWrites), .enable(EnableOctaves[2] & ActiveOctave == 2), .sinData(SinOutput), .cosData(CosOutput), .mathOp(CurrentOctaveOp), .bin(CurrentOctaveBinIndex), .clk, .rst);
+    OctaveManager #(.BINS(BPO), .SIZE(TOPSIZE/8), .N(N+3), .NO(ND)) Octave4(.nextOctave(Octave4to5), .magnitude(outBins[24:47]), .trigPosReq(TrigTablePositions[3]),
+                  .newSample(Octave3to4), .readSample(EnableOctaves[3] & DoWrites), .enable(EnableOctaves[3] & ActiveOctave == 3), .sinData(SinOutput), .cosData(CosOutput), .mathOp(CurrentOctaveOp), .bin(CurrentOctaveBinIndex), .clk, .rst);
+    OctaveManager #(.BINS(BPO), .SIZE(TOPSIZE/16), .N(N+4), .NO(ND)) Octave5(.nextOctave(Octave5to6), .magnitude(outBins[0:23]), .trigPosReq(TrigTablePositions[4]),
+                  .newSample(Octave4to5), .readSample(EnableOctaves[4] & DoWrites), .enable(EnableOctaves[4] & ActiveOctave == 4), .sinData(SinOutput), .cosData(CosOutput), .mathOp(CurrentOctaveOp), .bin(CurrentOctaveBinIndex), .clk, .rst);
 
 
     // TODO: IIR?
 endmodule
-
 
 // N is for input sample
 // NO is for output magnitude
@@ -119,7 +113,6 @@ module OctaveManager
     end
 endmodule
 
-
 module OperationManager
 #(parameter OCT = 5, BINS = 24)
 (
@@ -178,73 +171,31 @@ module OperationManager
     end
 endmodule
 
-
-// A multi-stage irregular counter for determining what to do in each clock cycle
-// Enable counting with `enable`
-// { op 0 { index 0 - 23 }, op 1 { index 0-23 } } x 5 octaves, then finished
-module OperationCounter
-#(parameter OCT = 5, BINS = 24)
+module OctaveSelector
+#(parameter OCT = 5)
 (
-    output logic [$clog2(OCT)-1:0] octave,
-    output logic operation, // add / subtract
-    output logic [$clog2(BINS)-1:0] bin,
-    output logic finished,
-    input logic enable,
+    output logic [OCT-1:0] enableOctaves,
+    input logic incr, // processingFinished from OperationManager
     input logic clk, rst
 );
-    always_ff @(posedge clk)
-    begin
-        if(rst || finished)
-        begin
-            octave <= '0;
-            operation <= '0;
-            bin <= '0;
-        end
-        else if(enable)
-        begin
-            if(bin == (BINS - 1))
-            begin
-                if(operation) octave <= octave + 1'd1;
-                operation <= ~operation;
-                bin <= '0;
-            end
-            else bin <= bin + 1'd1;
-        end
-    end
-
-    assign finished = (octave == (OCT - 1)) && operation && (bin == (BINS - 1));
-endmodule
-
-
-// A binary counter, but each bit only stays on for 1 clock cycle
-// Enable counting with `incr`
-module WritePulseGen
-#(parameter N = 5)
-(
-    output logic [N-1:0] writeLines,
-    input logic sampleReady, // whether a new sample is ready in the audio buffer
-    input logic processing, // whether we are currently processing a sample
-    input logic clk, rst
-);
-    logic [N-1:0] Counter;
+    logic [OCT-2:0] Previous, Present;
 
     always_ff @(posedge clk)
     begin
-        if(rst) Counter <= '0;
-        else
+        if(rst)
         begin
-            if(writeLines[0]) Counter <= Counter + 1'd1;
-            writeLines[0] <= ~writeLines[0] & ~processing & sampleReady;
+            Previous <= '1;
+            Present <= '0;
+        end
+        else if(incr)
+        begin
+            Previous <= Present;
+            Present <= Present + 1'd1;
         end
     end
 
-    genvar i;
-    generate
-        for(i = 1; i < N; i++)
-        begin
-            assign writeLines[i] = writeLines[0] & (Counter[i-1:0] == '0);
-        end
-    endgenerate
+    assign enableOctaves[0] = '1; // Bottom octave is always processing.
+    assign enableOctaves[OCT-1:1] = Previous & ~Present;
 endmodule
 
 // A chain of SIZE, N-bit registers, with the outputs of the first, second, and last registers exposed
@@ -278,7 +229,6 @@ module OctaveStorage
     end
 endmodule
 
-
 // An N-bit enabled register
 module SampleRegister
 #(parameter N = 16)
@@ -291,7 +241,6 @@ module SampleRegister
         if(rst) out <= '0;
         else out <= en ? in : out;
 endmodule
-
 
 
 // Normal operation spacing

@@ -54,14 +54,3 @@ module TableCounters
         else if(increment) Counters[bin] <= (Counters[bin] + 1'd1) % ThisBinMax;
     end
 endmodule
-
-
-// TODO: Investigate structure that increments all counters in an octave at once, perhaps that might be simpler than incrementing each bin.
-module TrigManager
-(
- // output sin and cos values for each octave
- // input next sample pulse, 1 for each octave (goes to all bins)
- // input next bin pulse, 1 for each octave
-);
-
-endmodule

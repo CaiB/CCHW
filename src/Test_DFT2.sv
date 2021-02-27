@@ -1,56 +1,3 @@
-module Test_OperationCounter;
-    localparam OCT = 5;
-    localparam BINS = 24;
-    logic [$clog2(OCT)-1:0] octave;
-    logic operation;
-    logic [$clog2(BINS)-1:0] bin;
-    logic finished;
-    logic enable;
-    logic clk, rst;
-
-    OperationCounter #(.OCT(OCT), .BINS(BINS)) DUT(.octave, .operation, .bin, .finished, .enable, .clk, .rst);
-
-    initial
-    begin
-        clk <= '0;
-        forever #100 clk <= ~clk;
-    end
-    
-    task Reset;
-        enable = '1;
-        rst = '1; @(posedge clk);
-        rst = '0; @(posedge clk);
-        assert(~finished);
-    endtask
-
-    task VerifyBinCounts(logic expectedOp, logic [$clog2(OCT)-1:0] expectedOct);
-        for(int binInd = 0; binInd < BINS; binInd++)
-        begin
-            assert(bin == binInd);
-            assert(operation == expectedOp);
-            assert(octave == expectedOct);
-            assert(finished == (binInd == BINS-1 && expectedOp && expectedOct == OCT-1));
-            if(~finished) @(posedge clk);
-        end
-    endtask
-
-    initial
-    begin
-        Reset();
-        for(int octInd = 0; octInd < OCT; octInd++)
-        begin
-            VerifyBinCounts('0, octInd);
-            VerifyBinCounts('1, octInd);
-        end
-        enable = '0;
-        repeat(5) @(posedge clk);
-        assert(bin == '0);
-        assert(~operation);
-        assert(octave == '0);
-        $stop;
-    end
-endmodule
-
 module Test_OperationManager;
     localparam OCT = 5;
     localparam BINS = 24;
@@ -138,80 +85,56 @@ module Test_OperationManager;
 
 endmodule
 
-module Test_WritePulseGen;
-    logic [3:0] writeLines;
-    logic sampleReady, processing;
-    logic clk, rst;
+module Test_OctaveSelector;
+    parameter OCT = 4;
+    logic [OCT-1:0] enableOctaves;
+    logic incr, clk, rst;
 
-    WritePulseGen #(.N(4)) DUT(.writeLines, .sampleReady, .processing, .clk, .rst);
+    OctaveSelector #(.OCT(OCT)) DUT(.enableOctaves, .incr, .clk, .rst);
 
     initial
     begin
         clk <= '0;
         forever #100 clk <= ~clk;
     end
-    
+
     task Reset;
-        rst = '1;
-        sampleReady = '0;
-        processing = '0;
-
-        @(posedge clk);
-        rst = '0;
-        @(posedge clk);
+        incr = '0;
+        rst = '1; @(posedge clk);
+        rst = '0; @(posedge clk);
     endtask
 
-    task CheckNone;
+    task Check(logic [OCT-1:0] expected);
         #5;
-        assert(writeLines == '0);
-    endtask
-
-    task Check(int cycles, logic [3:0] expected);
-        while(cycles > 0)
-        begin
-            processing = '1;
-            @(posedge clk);
-            #5;
-            assert(writeLines == '0);
-            cycles--;
-        end
-        processing = '0;
+        $write("%4t Expected %b, got %b", $time, expected, enableOctaves);
+        assert(enableOctaves == expected) else $display(" - WRONG");
+        $display("");
         @(posedge clk);
-
-        #5;
-        assert(writeLines == expected);
     endtask
 
     initial
     begin
         Reset();
-
-        // Make sure we don't count without sampleReady on
-        CheckNone();
-        @(posedge clk);
-        CheckNone();
-
-        sampleReady = '1;
-        Check(1, 4'b1111);
-        Check(1, 4'b0001);
-        Check(5, 4'b0011);
-        Check(5, 4'b0001);
-        Check(1, 4'b0111);
-        Check(9, 4'b0001);
-        Check(2, 4'b0011);
-        Check(2, 4'b0001);
-        Check(2, 4'b1111);
-        Check(2, 4'b0001);
-        Check(2, 4'b0011);
-        Check(2, 4'b0001);
-        Check(2, 4'b0111);
-
-        sampleReady = '0;
-        Check(2, 4'b0000);
-        Check(2, 4'b0000);
-        sampleReady = '1;
-
-        Check(2, 4'b0001);
+        Check(4'b1111);
+        Check(4'b1111);
+        #50; incr = '1;
+        Check(4'b1111);
+        Check(4'b0001);
+        Check(4'b0011);
+        Check(4'b0001);
+        Check(4'b0111);
+        Check(4'b0001);
+        Check(4'b0011);
+        Check(4'b0001);
+        Check(4'b1111);
+        Check(4'b0001);
+        Check(4'b0011);
+        Check(4'b0001);
+        #50; incr = '0;
+        Check(4'b0111);
+        Check(4'b0111);
+        Check(4'b0111);
+        Check(4'b0111);
         $stop;
     end
 endmodule

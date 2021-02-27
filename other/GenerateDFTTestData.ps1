@@ -79,10 +79,10 @@ module Test_DFT;
 
     logic unsigned [35:0] outBins [0:BINCOUNT-1];
     logic signed [15:0] inputSample;
-    logic readSample;
+    logic sampleReady;
     logic clk, rst;
 
-    DFT #(.BPO(24), .OC(5), .N(16), .TOPSIZE(1024)) DFTDUT(.outBins, .inputSample, .readSample, .clk, .rst);
+    DFT #(.BPO(24), .OC(5), .N(16), .TOPSIZE(1024)) DFTDUT(.outBins, .inputSample, .sampleReady, .clk, .rst);
 
     logic signed [15:0] InputData [0:LEN-1];
     initial `$readmemh("../other/dfttestdata.txt", InputData);
@@ -98,7 +98,7 @@ module Test_DFT;
     task Reset;
         rst = '1;
         inputSample = '0;
-        readSample = '0;
+        sampleReady = '0;
         @(posedge clk);
         rst = '0;
         @(posedge clk);
@@ -107,10 +107,10 @@ module Test_DFT;
     task InsertData(int samples);
         for(int i = 0; i < samples; i++)
         begin
-            readSample = '1;
+            sampleReady = '1;
             inputSample = InputData[i];
             @(posedge clk);
-            readSample = '0;
+            sampleReady = '0;
             repeat(250) @(posedge clk);
             `$display("Sample %4d finished", i);
         end
