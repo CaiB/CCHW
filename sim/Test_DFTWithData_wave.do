@@ -179,8 +179,31 @@ add wave -noupdate -radix decimal {/Test_DFT/DFTDUT/Octave1/OctaveData/Inter[7]}
 add wave -noupdate -radix decimal {/Test_DFT/DFTDUT/Octave1/OctaveData/Inter[8]}
 add wave -noupdate -radix decimal {/Test_DFT/DFTDUT/Octave1/OctaveData/Inter[9]}
 add wave -noupdate -radix decimal {/Test_DFT/DFTDUT/Octave1/OctaveData/Inter[10]}
+add wave -noupdate -divider {Octave 2 Trig}
+add wave -noupdate -childformat {{{/Test_DFT/DFTDUT/Octave2/TrigTableCountersCur/Counters[0]} -radix unsigned} {{/Test_DFT/DFTDUT/Octave2/TrigTableCountersCur/Counters[1]} -radix unsigned} {{/Test_DFT/DFTDUT/Octave2/TrigTableCountersCur/Counters[2]} -radix unsigned} {{/Test_DFT/DFTDUT/Octave2/TrigTableCountersCur/Counters[3]} -radix unsigned} {{/Test_DFT/DFTDUT/Octave2/TrigTableCountersCur/Counters[4]} -radix unsigned} {{/Test_DFT/DFTDUT/Octave2/TrigTableCountersCur/Counters[5]} -radix unsigned} {{/Test_DFT/DFTDUT/Octave2/TrigTableCountersCur/Counters[6]} -radix unsigned} {{/Test_DFT/DFTDUT/Octave2/TrigTableCountersCur/Counters[7]} -radix unsigned} {{/Test_DFT/DFTDUT/Octave2/TrigTableCountersCur/Counters[8]} -radix unsigned} {{/Test_DFT/DFTDUT/Octave2/TrigTableCountersCur/Counters[9]} -radix unsigned} {{/Test_DFT/DFTDUT/Octave2/TrigTableCountersCur/Counters[10]} -radix unsigned} {{/Test_DFT/DFTDUT/Octave2/TrigTableCountersCur/Counters[11]} -radix unsigned} {{/Test_DFT/DFTDUT/Octave2/TrigTableCountersCur/Counters[12]} -radix unsigned} {{/Test_DFT/DFTDUT/Octave2/TrigTableCountersCur/Counters[13]} -radix unsigned} {{/Test_DFT/DFTDUT/Octave2/TrigTableCountersCur/Counters[14]} -radix unsigned} {{/Test_DFT/DFTDUT/Octave2/TrigTableCountersCur/Counters[15]} -radix unsigned} {{/Test_DFT/DFTDUT/Octave2/TrigTableCountersCur/Counters[16]} -radix unsigned} {{/Test_DFT/DFTDUT/Octave2/TrigTableCountersCur/Counters[17]} -radix unsigned} {{/Test_DFT/DFTDUT/Octave2/TrigTableCountersCur/Counters[18]} -radix unsigned} {{/Test_DFT/DFTDUT/Octave2/TrigTableCountersCur/Counters[19]} -radix unsigned} {{/Test_DFT/DFTDUT/Octave2/TrigTableCountersCur/Counters[20]} -radix unsigned} {{/Test_DFT/DFTDUT/Octave2/TrigTableCountersCur/Counters[21]} -radix unsigned} {{/Test_DFT/DFTDUT/Octave2/TrigTableCountersCur/Counters[22]} -radix unsigned} {{/Test_DFT/DFTDUT/Octave2/TrigTableCountersCur/Counters[23]} -radix unsigned}} -subitemconfig {{/Test_DFT/DFTDUT/Octave2/TrigTableCountersCur/Counters[0]} {-radix unsigned} {/Test_DFT/DFTDUT/Octave2/TrigTableCountersCur/Counters[1]} {-radix unsigned} {/Test_DFT/DFTDUT/Octave2/TrigTableCountersCur/Counters[2]} {-radix unsigned} {/Test_DFT/DFTDUT/Octave2/TrigTableCountersCur/Counters[3]} {-radix unsigned} {/Test_DFT/DFTDUT/Octave2/TrigTableCountersCur/Counters[4]} {-radix unsigned} {/Test_DFT/DFTDUT/Octave2/TrigTableCountersCur/Counters[5]} {-radix unsigned} {/Test_DFT/DFTDUT/Octave2/TrigTableCountersCur/Counters[6]} {-radix unsigned} {/Test_DFT/DFTDUT/Octave2/TrigTableCountersCur/Counters[7]} {-radix unsigned} {/Test_DFT/DFTDUT/Octave2/TrigTableCountersCur/Counters[8]} {-radix unsigned} {/Test_DFT/DFTDUT/Octave2/TrigTableCountersCur/Counters[9]} {-radix unsigned} {/Test_DFT/DFTDUT/Octave2/TrigTableCountersCur/Counters[10]} {-radix unsigned} {/Test_DFT/DFTDUT/Octave2/TrigTableCountersCur/Counters[11]} {-radix unsigned} {/Test_DFT/DFTDUT/Octave2/TrigTableCountersCur/Counters[12]} {-radix unsigned} {/Test_DFT/DFTDUT/Octave2/TrigTableCountersCur/Counters[13]} {-radix unsigned} {/Test_DFT/DFTDUT/Octave2/TrigTableCountersCur/Counters[14]} {-radix unsigned} {/Test_DFT/DFTDUT/Octave2/TrigTableCountersCur/Counters[15]} {-radix unsigned} {/Test_DFT/DFTDUT/Octave2/TrigTableCountersCur/Counters[16]} {-radix unsigned} {/Test_DFT/DFTDUT/Octave2/TrigTableCountersCur/Counters[17]} {-radix unsigned} {/Test_DFT/DFTDUT/Octave2/TrigTableCountersCur/Counters[18]} {-radix unsigned} {/Test_DFT/DFTDUT/Octave2/TrigTableCountersCur/Counters[19]} {-radix unsigned} {/Test_DFT/DFTDUT/Octave2/TrigTableCountersCur/Counters[20]} {-radix unsigned} {/Test_DFT/DFTDUT/Octave2/TrigTableCountersCur/Counters[21]} {-radix unsigned} {/Test_DFT/DFTDUT/Octave2/TrigTableCountersCur/Counters[22]} {-radix unsigned} {/Test_DFT/DFTDUT/Octave2/TrigTableCountersCur/Counters[23]} {-radix unsigned}} /Test_DFT/DFTDUT/Octave2/TrigTableCountersCur/Counters
+add wave -noupdate /Test_DFT/DFTDUT/Octave2/TrigTableCountersCur/increment
+add wave -noupdate -radix unsigned /Test_DFT/DFTDUT/Octave2/TrigTableCountersCur/bin
+add wave -noupdate -radix unsigned /Test_DFT/DFTDUT/Octave2/TrigTableCountersCur/ThisBinMax
+add wave -noupdate -radix unsigned /Test_DFT/DFTDUT/Octave2/TrigTableCountersCur/counterOut
+add wave -noupdate -divider {Octave 2 Storage}
+add wave -noupdate -radix decimal /Test_DFT/DFTDUT/Octave2/newSample
+add wave -noupdate /Test_DFT/DFTDUT/Octave2/OctaveData/writeSample
+add wave -noupdate -radix decimal /Test_DFT/DFTDUT/Octave2/OctaveData/sample0
+add wave -noupdate -radix decimal /Test_DFT/DFTDUT/Octave2/OctaveData/sample1
+add wave -noupdate -radix decimal /Test_DFT/DFTDUT/Octave2/OctaveData/oldestSample
+add wave -noupdate -radix decimal {/Test_DFT/DFTDUT/Octave2/OctaveData/Inter[0]}
+add wave -noupdate -radix decimal {/Test_DFT/DFTDUT/Octave2/OctaveData/Inter[1]}
+add wave -noupdate -radix decimal {/Test_DFT/DFTDUT/Octave2/OctaveData/Inter[2]}
+add wave -noupdate -radix decimal {/Test_DFT/DFTDUT/Octave2/OctaveData/Inter[3]}
+add wave -noupdate -radix decimal {/Test_DFT/DFTDUT/Octave2/OctaveData/Inter[4]}
+add wave -noupdate -radix decimal {/Test_DFT/DFTDUT/Octave2/OctaveData/Inter[5]}
+add wave -noupdate -radix decimal {/Test_DFT/DFTDUT/Octave2/OctaveData/Inter[6]}
+add wave -noupdate -radix decimal {/Test_DFT/DFTDUT/Octave2/OctaveData/Inter[7]}
+add wave -noupdate -radix decimal {/Test_DFT/DFTDUT/Octave2/OctaveData/Inter[8]}
+add wave -noupdate -radix decimal {/Test_DFT/DFTDUT/Octave2/OctaveData/Inter[9]}
+add wave -noupdate -radix decimal {/Test_DFT/DFTDUT/Octave2/OctaveData/Inter[10]}
 TreeUpdate [SetDefaultTree]
-WaveRestoreCursors {{Cursor 1} {51404961 ps} 0}
+WaveRestoreCursors {{Cursor 1} {9300 ps} 0}
 quietly wave cursor active 1
 configure wave -namecolwidth 150
 configure wave -valuecolwidth 100
@@ -196,4 +219,4 @@ configure wave -griddelta 40
 configure wave -timeline 0
 configure wave -timelineunits ps
 update
-WaveRestoreZoom {0 ps} {4 ns}
+WaveRestoreZoom {50918700 ps} {51430700 ps}

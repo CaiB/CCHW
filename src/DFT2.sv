@@ -20,11 +20,9 @@ module DFT
         if(Processing) ProcessingNext = ~OctaveProcessingFinished;
         else ProcessingNext = readSample;
 
-    // Active octave selection
     // Generates the write pulses for each of the octaves at the correct intervals
     logic [OC-1:0] OctaveCounter;
-    assign OctaveCounter[0] = readSample & ~Processing;
-    WritePulseGen #(.N(OC-1)) PulseGen(.writeLines(OctaveCounter[OC-1:1]), .incr(readSample & ~Processing), .clk, .rst);
+    WritePulseGen #(.N(OC)) PulseGen(.writeLines(OctaveCounter), .sampleReady(readSample), .processing(Processing), .clk, .rst);
 
     // Octave operation counter
     logic [$clog2(OC)-1:0] ActiveOctave;
@@ -122,6 +120,65 @@ module OctaveManager
 endmodule
 
 
+module OperationManager
+#(parameter OCT = 5, BINS = 24)
+(
+    output logic [$clog2(OCT)-1:0] octave,
+    output logic operation, // add / subtract
+    output logic [$clog2(BINS)-1:0] bin,
+    output logic ready, // asserted while we are ready and waiting for an audio sample
+    output logic writeSample, // asserted for 1 cycle before processing to write the sample into each octave
+    output logic finishedProcessing, // asserted for 1 clock cycle after the current sample is done being processed
+    input logic sampleReady,
+    input logic clk, rst
+);
+    typedef enum { WAIT, WRITE, LOOPSUB, LOOPADD, DONE, XXX } OpManState;
+    OpManState Present, Next;
+
+    always_ff @(posedge clk) // State register
+        if(rst) Present <= WAIT;
+        else Present <= Next;
+    
+    always_comb // Next state
+    begin
+        Next = XXX;
+        case(Present)
+            WAIT: if(sampleReady) Next = WRITE;
+                  else Next = WAIT; // @LB
+            WRITE: Next = LOOPSUB;
+            LOOPSUB: if(bin == (BINS - 1)) Next = LOOPADD;
+                     else Next = LOOPSUB; // @LB
+            LOOPADD: if(bin == (BINS - 1)) Next = (octave == (OCT - 1) ? DONE : LOOPSUB);
+                     else Next = LOOPADD; // @LB
+            DONE: Next = WAIT;
+            default: Next = XXX;
+        endcase
+    end
+
+    always_comb // Combinational outputs
+    begin
+        operation = (Present == LOOPADD);
+        ready = (Present == WAIT);
+        writeSample = (Present == WRITE);
+        finishedProcessing = (Present == DONE);
+    end
+    
+    always_ff @(posedge clk) // Registered outputs
+    begin
+        if(rst || Present == WRITE)
+        begin
+            octave <= '0;
+            bin <= '0;
+        end
+        else
+        begin
+            if(Present == LOOPSUB || Present == LOOPADD) bin <= (bin == (BINS - 1) ? '0 : bin + 1'd1);
+            if(Present == LOOPADD && bin == (BINS - 1)) octave <= octave + 1'd1;
+        end
+    end
+endmodule
+
+
 // A multi-stage irregular counter for determining what to do in each clock cycle
 // Enable counting with `enable`
 // { op 0 { index 0 - 23 }, op 1 { index 0-23 } } x 5 octaves, then finished
@@ -162,29 +219,32 @@ endmodule
 // A binary counter, but each bit only stays on for 1 clock cycle
 // Enable counting with `incr`
 module WritePulseGen
-#(parameter N = 4)
+#(parameter N = 5)
 (
     output logic [N-1:0] writeLines,
-    input logic incr,
+    input logic sampleReady, // whether a new sample is ready in the audio buffer
+    input logic processing, // whether we are currently processing a sample
     input logic clk, rst
 );
-    logic [N-1:0] Counter, CounterPrev;
+    logic [N-1:0] Counter;
 
     always_ff @(posedge clk)
     begin
-        if(rst)
+        if(rst) Counter <= '0;
+        else
         begin
-            Counter <= '0;
-            CounterPrev <= '0;
-        end
-        else if(incr)
-        begin
-            CounterPrev <= Counter;
-            Counter <= Counter + 1'd1;
+            if(writeLines[0]) Counter <= Counter + 1'd1;
+            writeLines[0] <= ~writeLines[0] & ~processing & sampleReady;
         end
     end
 
-    assign writeLines = Counter & ~CounterPrev;
+    genvar i;
+    generate
+        for(i = 1; i < N; i++)
+        begin
+            assign writeLines[i] = writeLines[0] & (Counter[i-1:0] == '0);
+        end
+    endgenerate
 endmodule
 
 // A chain of SIZE, N-bit registers, with the outputs of the first, second, and last registers exposed

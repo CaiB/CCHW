@@ -51,12 +51,99 @@ module Test_OperationCounter;
     end
 endmodule
 
-module Test_WritePulseGen;
-    logic [3:0] writeLines;
-    logic incr;
+module Test_OperationManager;
+    localparam OCT = 5;
+    localparam BINS = 24;
+    
+    logic [$clog2(OCT)-1:0] octave;
+    logic operation; // add / subtract
+    logic [$clog2(BINS)-1:0] bin;
+    logic ready; // asserted while we are ready and waiting for an audio sample
+    logic writeSample; // asserted for 1 cycle before processing to write the sample into each octave
+    logic finishedProcessing; // asserted for 1 clock cycle after the current sample is done being processed
+
+    logic sampleReady;
     logic clk, rst;
 
-    WritePulseGen #(.N(4)) DUT(.writeLines, .incr, .clk, .rst);
+    OperationManager #(.OCT(OCT), .BINS(BINS)) DUT(.*);
+
+    initial
+    begin
+        clk <= '0;
+        forever #100 clk <= ~clk;
+    end
+    
+    task Reset;
+        sampleReady = '0;
+        rst = '1; @(posedge clk);
+        rst = '0; @(posedge clk);
+        assert(~finishedProcessing);
+        assert(~writeSample);
+        assert(ready);
+    endtask
+
+    task VerifyBinCounts(logic expectedOp, logic [$clog2(OCT)-1:0] expectedOct);
+        for(int binInd = 0; binInd < BINS; binInd++)
+        begin
+            #5;
+            assert(bin == binInd) else $display("%5t: Expected bin %2d, was %2d", $time, binInd, bin);
+            assert(operation == expectedOp);
+            assert(octave == expectedOct);
+            assert(~writeSample);
+            if(~(binInd == BINS-1 && expectedOp && expectedOct == OCT-1)) @(posedge clk);
+        end
+    endtask
+
+    initial
+    begin
+        Reset();
+        sampleReady = '1; @(posedge clk);
+        sampleReady = '0;
+        #5; assert(writeSample);
+        @(posedge clk);
+        #5; assert(~writeSample);
+
+        for(int octInd = 0; octInd < OCT; octInd++)
+        begin
+            VerifyBinCounts('0, octInd);
+            VerifyBinCounts('1, octInd);
+        end
+        @(posedge clk);
+        #5; assert(finishedProcessing);
+
+        repeat(5) @(posedge clk);
+        assert(bin == '0);
+        assert(~operation);
+
+        // Again, but this time pretend there's multiple samples waiting
+        sampleReady = '1; @(posedge clk);
+        #5; assert(writeSample);
+        @(posedge clk);
+        #5; assert(~writeSample);
+
+        for(int octInd = 0; octInd < OCT; octInd++)
+        begin
+            VerifyBinCounts('0, octInd);
+            VerifyBinCounts('1, octInd);
+        end
+        @(posedge clk);
+        #5; assert(finishedProcessing);
+
+        repeat(5) @(posedge clk);
+        sampleReady = '0;
+        repeat(50) @(posedge clk);
+
+        $stop;
+    end
+
+endmodule
+
+module Test_WritePulseGen;
+    logic [3:0] writeLines;
+    logic sampleReady, processing;
+    logic clk, rst;
+
+    WritePulseGen #(.N(4)) DUT(.writeLines, .sampleReady, .processing, .clk, .rst);
 
     initial
     begin
@@ -66,7 +153,8 @@ module Test_WritePulseGen;
     
     task Reset;
         rst = '1;
-        incr = '0;
+        sampleReady = '0;
+        processing = '0;
 
         @(posedge clk);
         rst = '0;
@@ -74,10 +162,22 @@ module Test_WritePulseGen;
     endtask
 
     task CheckNone;
+        #5;
         assert(writeLines == '0);
     endtask
 
-    task Check(logic [3:0] expected);
+    task Check(int cycles, logic [3:0] expected);
+        while(cycles > 0)
+        begin
+            processing = '1;
+            @(posedge clk);
+            #5;
+            assert(writeLines == '0);
+            cycles--;
+        end
+        processing = '0;
+        @(posedge clk);
+
         #5;
         assert(writeLines == expected);
     endtask
@@ -86,22 +186,32 @@ module Test_WritePulseGen;
     begin
         Reset();
 
-        // Make sure we don't count without incr on
+        // Make sure we don't count without sampleReady on
         CheckNone();
         @(posedge clk);
         CheckNone();
 
-        incr = '1;
-        @(posedge clk); Check(4'b0001); // 0001
-        @(posedge clk); Check(4'b0010); // 0010
-        @(posedge clk); Check(4'b0001); // 0011
-        @(posedge clk); Check(4'b0100); // 0100
-        @(posedge clk); Check(4'b0001); // 0101
-        @(posedge clk); Check(4'b0010); // 0110
-        @(posedge clk); Check(4'b0001); // 0111
-        @(posedge clk); Check(4'b1000); // 1000
-        @(posedge clk); Check(4'b0001); // 1001
-        @(posedge clk);
+        sampleReady = '1;
+        Check(1, 4'b1111);
+        Check(1, 4'b0001);
+        Check(5, 4'b0011);
+        Check(5, 4'b0001);
+        Check(1, 4'b0111);
+        Check(9, 4'b0001);
+        Check(2, 4'b0011);
+        Check(2, 4'b0001);
+        Check(2, 4'b1111);
+        Check(2, 4'b0001);
+        Check(2, 4'b0011);
+        Check(2, 4'b0001);
+        Check(2, 4'b0111);
+
+        sampleReady = '0;
+        Check(2, 4'b0000);
+        Check(2, 4'b0000);
+        sampleReady = '1;
+
+        Check(2, 4'b0001);
         $stop;
     end
 endmodule

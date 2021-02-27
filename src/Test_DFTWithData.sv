@@ -8,7 +8,7 @@ module Test_DFT;
     logic readSample;
     logic clk, rst;
 
-    DFT #(.BPO(24), .OC(5), .N(16), .TOPSIZE(2048)) DFTDUT(.outBins, .inputSample, .readSample, .clk, .rst);
+    DFT #(.BPO(24), .OC(5), .N(16), .TOPSIZE(1024)) DFTDUT(.outBins, .inputSample, .readSample, .clk, .rst);
 
     logic signed [15:0] InputData [0:LEN-1];
     initial $readmemh("../other/dfttestdata.txt", InputData);
@@ -43,6 +43,10 @@ module Test_DFT;
     endtask
 
     task CheckOutputs;
+        $display("Raw Data:");
+        for(int i = 0; i < 120; i++) $display("%d,%d", ExpectedOutputs[i], outBins[i]);
+
+        $display("Comparisons:");
         for(int i = 0; i < 120; i++)
         begin
             real min, max;
