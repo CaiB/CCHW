@@ -63,9 +63,9 @@ module part1 (
 
 	genvar i;
 	generate
-		for(i = 24; i < 34; i++)
+		for(i = 48; i < 58; i++)
 		begin : MakeLEDs
-			assign LEDR[33 - i] = (outBins[i][28] | outBins[i][29] | outBins[i][30] | outBins[i][31]);
+			assign LEDR[57 - i] = (outBins[i][28] | outBins[i][29] | outBins[i][30] | outBins[i][31]);
 		end
 	endgenerate
 	/* End custom code */
