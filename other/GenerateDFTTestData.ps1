@@ -3,9 +3,9 @@ $TestFile = '../src/Test_DFTWithData.sv';
 
 # Waves are defined as (Freqency [Hz], Amplitude [0~1], Phase [deg]).
 $Wave1 = @(880, 0.4, 0);
-$Wave2 = @(930, 0.3, 90);
+$Wave2 = @(440, 0.3, 90);
 #$Wave2 = @(0, 0, 0);
-$Wave3 = @(1320, 0.3, 127);
+$Wave3 = @(89, 0.3, 127);
 #$Wave3 = @(0, 0, 0);
 
 $SampleRate = 48000;
@@ -14,13 +14,16 @@ $SampleRate = 48000;
 $MagMultiplier = 1024;
 
 # How many samples long the data should be.
-$Length = 1024;
+$Length = 1080;
 
 # How closely the output is expected to match the theoretical output. +/-15% error bounds is 0.15.
 $TestErrorBounds = 0.1;
 
+# Data cuts off and becomes all 0s after this sample index. Set to 0 for no cutoff.
+$Cutout = 512;
+
 $DataContents = "";
-$WaveData = [double[]]::new($MagMultiplier);
+$WaveData = [double[]]::new($Length);
 Write-Host "Generating test wave data into '$DataFile'...";
 
 for($Sample = 0; $Sample -LT $Length; $Sample++)
@@ -29,6 +32,7 @@ for($Sample = 0; $Sample -LT $Length; $Sample++)
     $Sample2 = [Math]::Sin($Wave2[0] / $SampleRate * $Sample * 2 * [Math]::PI + ($Wave2[2] / 180 * [Math]::PI)) * $MagMultiplier * $Wave2[1];
     $Sample3 = [Math]::Sin($Wave3[0] / $SampleRate * $Sample * 2 * [Math]::PI + ($Wave3[2] / 180 * [Math]::PI)) * $MagMultiplier * $Wave3[1];
     $SampleValuePre = $Sample1 + $Sample2 + $Sample3;
+    if(($Cutout -NE 0) -AND ($Sample -GE $Cutout)) { $SampleValuePre = 0; }
     [int16]$SampleValue = [int16][Math]::Round($SampleValuePre);
     $DataContents += "{0:X4}`n" -F $SampleValue;
     $WaveData[$Sample] = $SampleValuePre;
@@ -61,7 +65,7 @@ for($Bin = 0; $Bin -LT $TotalBinCount; $Bin++)
         $CosSum += $Cos * $WaveData[$Sample];
     }
     $Magnitude = [Math]::Sqrt($SinSum * $SinSum + $CosSum * $CosSum);
-    Write-Host "$Magnitude";
+    #Write-Host "$Magnitude";
     $MagRound = [int32][Math]::Round($Magnitude);
     $ExpectedValues += ("32'd{0}, " -F $MagRound);
 }
