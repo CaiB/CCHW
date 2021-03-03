@@ -20,7 +20,7 @@ $Length = 1080;
 $TestErrorBounds = 0.1;
 
 # Data cuts off and becomes all 0s after this sample index. Set to 0 for no cutoff.
-$Cutout = 512;
+$Cutout = 0;
 
 $DataContents = "";
 $WaveData = [double[]]::new($Length);
