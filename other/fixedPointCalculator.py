@@ -1,6 +1,6 @@
 import math
 
-VALUE = 0.1
+VALUE = 0.02
 DECIMAL_BITS = 10
 
 def fixedPointEstimate(value, depth):

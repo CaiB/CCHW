@@ -6,64 +6,105 @@ module LinearVisualizer #(
     parameter BIN_QTY = 12,
     // parameter OctaveBinCount = 24;       // not used
 
-    parameter steadyBright = 'b1,           // True
+    parameter steadyBright = 'b0,           // True
 
     // these assume the W and D above, use fixedPointCalculator.py to recalculate if needed
-    parameter LEDFloor    = 'b0001100110,   // 0.0996... 
-    parameter LEDLimitWhl = 'b000001,       // 1, whole number part of LEDLimit
-    parameter LEDLimitDec = 'b0000000000,   // .0, decimal part of LEDLimit
-    parameter SatAmpWhl   = 'b000001,       // 1, whole number part of SaturationAmplifier
-    parameter SatAmpDec   = 'b1001100110    // 0.5996..., decimal part of SaturationAmplifier
+    parameter LEDFloor = 'b0001100110,      // 0.0996... ~ 102 ~ 0001100110
+    parameter LEDLimit = 1023,              // ~1.0 ~ 1023 ~ 1111111111
+    parameter SaturationAmplifier = 1638,   // 1.599.. ~ 1638 ~ 1_1111000000
+
+    parameter yellowToRedSlope  = 21824,    // 21.3125 ~  21824 ~  'b10101_0101000000
+    parameter redToBlueSlope    = 43648,    // 42.625  ~  41600 ~ 'b101010_1010000000
+    parameter blueToYellowSlope = 65472     // 63.9375 ~ 130944 ~ 'b111111_1111000000
 ) (
-    output  logic [(24*LEDS)-1:0] led_rgb,  // data input from visualizer
-    output  logic start,                    // comms input from visualizer
+    output logic [BIN_QTY - 1 : 0][23 : 0] rgb,
+    output logic [BIN_QTY - 2 : 0][$clog2(LEDS) - 1 : 0] LEDCounts;
+    output logic start,                     // comms input from visualizer
     
     input logic [BIN_QTY - 1 : 0][W + D - 1 : 0] noteAmplitudes,
     input logic [BIN_QTY - 1 : 0][W + D - 1 : 0] notePositions,
     input logic done,
     input logic clk, rst
 );
-    integer i, j;
 
-    logic [W + D - 1 + $clog2(BIN_QTY) : 0] amplitudeSum; // make large enough to hold total sum
+    genvar i, j;
 
-    logic [W + D - 1 + $clog2(BIN_QTY) + 10 : 0] amplitudeSumMultiplied_temp;
-    logic [W + D - 1 + $clog2(BIN_QTY) : 0] amplitudeSumMultiplied;
+    logic [BIN_QTY - 1 : 0][W + D - 1 : 0] amplitudes, amplitudesFast;
+    logic [W + D - 1 + $clog2(BIN_QTY): 0] amplitudeSum;
+    logic [BIN_QTY - 1 : 0][D - 1 : 0] hues;
 
-    logic [BIN_QTY - 1 : 0][W + D - 1 : 0] noteAmplitudesReduced;
-    logic [BIN_QTY - 1 : 0][W + D - 1 : 0] noteAmplitudesFast;
-    logic [W + D - 1 + $clog2(BIN_QTY) : 0] amplitudeSumNew;
+    // TODO: integrate start and done into the logic
+    assign start = '0;
 
-    // sums the note amplitudes
-    always_comb begin
-        amplitudeSum = 'd0;
-        for (i = 0; i < BIN_QTY; i++) begin
-            amplitudeSum += noteAmplitudes[i];
+    // computes the relative amplitudes and their sum
+    AmpPreprocessor #(
+        .W              (W              ),
+        .D              (D              ),
+        .BIN_QTY        (BIN_QTY        ),
+        .LEDFloor       (LEDFloor       )
+    ) AmpPreprocessor_u (
+        .noteAmplitudes_o       (noteAmplitudes_o       ),
+        .noteAmplitudesFast_o   (noteAmplitudesFast_o   ),
+        .amplitudeSumNew_o      (amplitudeSumNew_o      ),
+        .done                   (                       ),
+        .noteAmplitudes_i       (noteAmplitudes         ),
+        .clk                    (clk                    ),
+        .rst                    (rst                    )
+    );
+
+    // computes the hue of each bin given its position
+    generate
+        for (i = 0; i < BIN_QTY; i++) begin : hue_proc
+            HueCalc #(
+                .D(D),
+                .BinsPerOctave      (BIN_QTY*2)
+            ) binHueCalc_u (
+                .noteHue_o      (noteHue_o       ),
+                .done           (                ),
+                .notePosition_i (notePositions[i]),
+                .clk            (clk             ),
+                .rst            (rst             )
+            );
         end
-    end
+    endgenerate
 
-    // finds the relative threshold
-    assign amplitudeSumMultiplied_temp = (amplitudeSum * LEDFloor);
-    assign amplitudeSumMultiplied = amplitudeSumMultiplied_temp[W + D - 1 + $clog2(BIN_QTY) + 10 : 10];
-
-    // applies the relative threshold
-    always_comb begin
-        amplitudeSumNew = 'd0;
-
-        for (j = 0; j < BIN_QTY; j++) begin
-            noteAmplitudesReduced[j] = {{$clog2(BIN_QTY){1'b0}}, noteAmplitudes[j]} - amplitudeSumMultiplied;
-            if (noteAmplitudesReduced[j][W + D - 1]) begin
-                noteAmplitudesReduced[j] = '0;
-                noteAmplitudesFast[j] = '0;
-            end
-
-            else begin
-                noteAmplitudesFast[j] = noteAmplitudes[j];
-            end
-
-            amplitudeSumNew += noteAmplitudesFast[j];
+    // computes the number LEDs to be assigned to each bin color
+    LEDCountCalc #(
+        .W      (W      ),
+        .D      (D      ),
+        .LEDS   (LEDS   ),
+        .BIN_QTY(BIN_QTY)
+    ) dut (
+        .LEDCount           (LEDCounts   ),
+        .done               (            ),
+        .noteAmplitudes_i   (amplitudes  ),
+        .amplitudeSumNew_i  (amplitudeSum),
+        .clk                (clk         ,
+        .rst                (rst         )
+    );
+    
+    // computes the color of each bin given their hue and amplitude
+    generate
+        for (j = 0; j < BIN_QTY; i++) begin : color_proc
+            ColorCalc #(
+                .W(W),
+                .D(D),
+                .SaturationAmplifier(1638),
+                .LEDLimit(1023),
+                .steadyBright('0)
+            ) binColorCalc_u (
+                .rgb                (rgb           ),
+                .done               (              ),
+                .noteAmplitude_i    (amplitudes    ),
+                .noteAmplitudeFast_i(amplitudesFast),
+                .noteHue_i          (hues          ),
+                .clk                (clk           ),
+                .rst                (rst           )
+            );
         end
-    end
+    endgenerate
+
+
 
 endmodule
 
@@ -104,18 +145,6 @@ module LinearVisualizer_testbench();
     
 
     initial begin
-        noteAmplitudes[0] = 16'b0001000000000000;
-        noteAmplitudes[1] = 16'b0001110000000000;
-        noteAmplitudes[2] = 16'b0001110000000000;
-        noteAmplitudes[3] = 16'b0000000000000000;
-        noteAmplitudes[4] = 16'b0000110000000000;
-        noteAmplitudes[5] = 16'b0001010000000000;
-        noteAmplitudes[6] = 16'b0000000000000000;
-        noteAmplitudes[7] = 16'b0010000000000000;
-        noteAmplitudes[8] = 16'b0000110000000000;
-        noteAmplitudes[9] = 16'b0010010000000000;
-        noteAmplitudes[10] = 16'b0001000000000000;
-        noteAmplitudes[11] = 16'b0001010000000000;
 
 
         #100ps;
