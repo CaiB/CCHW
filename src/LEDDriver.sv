@@ -14,6 +14,8 @@ module LEDDriver #(
     input  logic clk, rst                   // standard inputs
 );
 
+    logic [(24*LEDS)-1:0] led_rgb;
+
     initial assert (FREQ <= 25_000_000); // WS2801 LEDs take a maximum frequency of 25 MHz
 
     localparam waitCntrSize = $clog2(FREQ/1000); // 1~2 ms wait

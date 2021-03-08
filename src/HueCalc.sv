@@ -7,7 +7,7 @@ module HueCalc #(
     parameter blueToYellowSlope = 65472     // 63.9375 ~ 130944 ~ 'b111111_1111000000
 ) (
     output logic [D - 1 : 0] noteHue_o,
-    output logic done,
+    output logic data_v,
 
     input logic [D - 1 : 0] notePosition_i,
     input logic clk, rst
@@ -45,16 +45,16 @@ module HueCalc #(
         noteHue_o = noteRectified;
         
 
-        done = &cycle_cntr;
+        data_v = &cycle_cntr;
 
         // for testing purposes
-        if (done & !rst) begin
-            $display("note = %d", note);
-            $display("noteSub = %d", noteSub);
-            $display("noteMult = %d", noteMult);
-            $display("noteRectified = %d", noteRectified);
-            $display("noteHue_o = %d", noteHue_o);
-        end
+        //if (data_v & !rst) begin
+        //    $display("note = %d", note);
+        //    $display("noteSub = %d", noteSub);
+        //    $display("noteMult = %d", noteMult);
+        //    $display("noteRectified = %d", noteRectified);
+        //    $display("noteHue_o = %d", noteHue_o);
+        //end
     end
 
     always_ff @(posedge clk) begin
@@ -69,7 +69,7 @@ module HueCalc #(
             noteSub_d1 <= noteSub;
 
             // bit range max is the concatenation of the bit range maximums of each signal multiplied and 9 less than that
-            noteMult_d1 <= noteMult[7 + D + W + D - 1 : 7 + D + W + D - 10]; // take the top 10 bits of the result
+            noteMult_d1 <= noteMult[5 + D + W + D - 1 : 5 + D + W + D - 10]; // take the top 10 bits of the result
 
             cycle_cntr <= cycle_cntr + 1;
         end
@@ -87,7 +87,7 @@ module HueCalc_testbench();
     parameter blueToYellowSlope = 65472;    // 63.9375 ~ 130944 ~ 'b111111_1111000000
 
     logic [D - 1 : 0] noteHue_o;
-    logic done;
+    logic data_v;
 
     logic [D - 1 : 0] notePosition_i;
     logic clk, rst;
@@ -106,7 +106,7 @@ module HueCalc_testbench();
         .blueToYellowSlope  (blueToYellowSlope  )
     ) dut (
         .noteHue_o      (noteHue_o      ),
-        .done           (done           ),
+        .data_v         (data_v         ),
         .notePosition_i (notePosition_i ),
         .clk            (clk            ),
         .rst            (rst            )
@@ -120,19 +120,19 @@ module HueCalc_testbench();
 
         @(posedge clk);
         @(posedge clk);
-        wait(done);
+        wait(data_v);
 
         notePosition_i = 10'b1011001001;
 
         @(posedge clk);
         @(posedge clk);
-        wait(done);
+        wait(data_v);
 
         notePosition_i = 10'b0110100111;
 
         @(posedge clk);
         @(posedge clk);
-        wait(done);
+        wait(data_v);
 
 
         $stop();

@@ -8,7 +8,7 @@ module ColorCalc #(
     parameter steadyBright = 'b0 
 ) (
     output logic [23:0] rgb,
-    output logic done,
+    output logic data_v,
 
     input logic [W + D - 1 : 0] noteAmplitude_i,
     input logic [W + D - 1 : 0] noteAmplitudeFast_i,
@@ -68,34 +68,34 @@ module ColorCalc #(
             
             default: rgb = {'0};
         endcase
-        $display("%25s: %6h","rgb", rgb);
-        $display("%25s: %1d","hueWhole_d2", hueWhole_d2);
+        //$display("%25s: %6h","rgb", rgb);
+        //$display("%25s: %1d","hueWhole_d2", hueWhole_d2);
 
         rgb = noteAmplitudeLimited_d2 == 0 ? '0 : rgb;
 
-        // done logic
-        done = &cycle_cntr;
+        // data_v logic
+        data_v = &cycle_cntr;
 
         // for testing purposes
-        if (done & !rst) begin
-            $display("%25s: %10d","noteAmplitude_i", noteAmplitude_i);
-            $display("%25s: %10d","noteAmplitudeFast_i", noteAmplitudeFast_i);
-            $display("%25s: %10d","noteHue_i", noteHue_i);
-            $display("%25s: %10d","hueDivided", hueDivided);
-            $display("%25s: %10d","hueWhole", hueWhole);
-            $display("%25s: %10d","hueWhole_d2", hueWhole_d2);
-            $display("%25s: %10d","hueDec", hueDec);
-            $display("%25s: %10d","noteAmplitude", noteAmplitude);
-            $display("%25s: %10d","noteAmplitudeMult", noteAmplitudeMult);
-            $display("%25s: %10d","noteAmplitudeDec", noteAmplitudeDec);
-            $display("%25s: %10d","noteAmplitudeLimited", noteAmplitudeLimited);
-            $display("%25s: %10d","colorValueMax", colorValueMax);
-            $display("%25s: %10d","colorValueXHue", colorValueXHue);
-            $display("%25s: %10d","colorValueXHuex", colorValueXHuex);
-            $display("%25s: %10d","colorValueXHue_d1", colorValueXHue_d1);
-            $display("%25s: %10d","colorValueXHuex_d1", colorValueXHuex_d1);
-            $display("%25s: %6h","rgb", rgb);
-        end
+        //if (data_v & !rst) begin
+        //    $display("%25s: %10d","noteAmplitude_i", noteAmplitude_i);
+        //    $display("%25s: %10d","noteAmplitudeFast_i", noteAmplitudeFast_i);
+        //    $display("%25s: %10d","noteHue_i", noteHue_i);
+        //    $display("%25s: %10d","hueDivided", hueDivided);
+        //    $display("%25s: %10d","hueWhole", hueWhole);
+        //    $display("%25s: %10d","hueWhole_d2", hueWhole_d2);
+        //    $display("%25s: %10d","hueDec", hueDec);
+        //    $display("%25s: %10d","noteAmplitude", noteAmplitude);
+        //    $display("%25s: %10d","noteAmplitudeMult", noteAmplitudeMult);
+        //    $display("%25s: %10d","noteAmplitudeDec", noteAmplitudeDec);
+        //    $display("%25s: %10d","noteAmplitudeLimited", noteAmplitudeLimited);
+        //    $display("%25s: %10d","colorValueMax", colorValueMax);
+        //    $display("%25s: %10d","colorValueXHue", colorValueXHue);
+        //    $display("%25s: %10d","colorValueXHuex", colorValueXHuex);
+        //    $display("%25s: %10d","colorValueXHue_d1", colorValueXHue_d1);
+        //    $display("%25s: %10d","colorValueXHuex_d1", colorValueXHuex_d1);
+        //    $display("%25s: %6h","rgb", rgb);
+        //end
     end
 
     always_ff @(posedge clk) begin
@@ -128,7 +128,7 @@ module ColorCalc_testbench();
     parameter TB_PERIOD = 100ns;
 
     logic [23:0] rgb;
-    logic done;
+    logic data_v;
     logic [W + D - 1 : 0] noteAmplitude_i;
     logic [W + D - 1 : 0] noteAmplitudeFast_i;
     logic [D - 1 : 0] noteHue_i;
@@ -149,7 +149,7 @@ module ColorCalc_testbench();
         .steadyBright('0)
     ) dut (
         .rgb                (rgb                ),
-        .done               (done               ),
+        .data_v             (data_v             ),
         .noteAmplitude_i    (noteAmplitude_i    ),
         .noteAmplitudeFast_i(noteAmplitudeFast_i),
         .noteHue_i          (noteHue_i          ),
@@ -167,7 +167,7 @@ module ColorCalc_testbench();
 
         @(posedge clk);
         @(posedge clk);
-        wait(done);
+        wait(data_v);
 
         noteAmplitude_i = 10'b1100011001;
         noteAmplitudeFast_i = 10'b0110101101;
@@ -176,7 +176,7 @@ module ColorCalc_testbench();
 
         @(posedge clk);
         @(posedge clk);
-        wait(done);
+        wait(data_v);
 
         noteAmplitude_i = 10'b1001111010;
         noteAmplitudeFast_i = 10'b0100001110;
@@ -185,7 +185,7 @@ module ColorCalc_testbench();
 
         @(posedge clk);
         @(posedge clk);
-        wait(done);
+        wait(data_v);
         
         $stop();
     end

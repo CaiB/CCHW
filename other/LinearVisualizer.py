@@ -1,6 +1,7 @@
 import random
 import math
 
+
 def CCtoHEX(note, sat, value) :
     hue = -1
 
@@ -12,7 +13,9 @@ def CCtoHEX(note, sat, value) :
     else :                          # BLUE -> YELLOW
         hue = (12.0 - note) * 45.0 + 60.0
     
+    #print(hue%360/360)
     return HsvToRGB(hue, sat, value)
+
 
 def HsvToRGB(hue, sat, value) :
     while (hue < 0) :
@@ -138,6 +141,13 @@ for i in range(0, BIN_QTY) :
 
 AmplitudeSum = AmplitudeSumAdj
 
+'''
+for i in range(0,BIN_QTY):
+    print(NoteAmplitudes[i] * 1024)
+    print(NoteAmplitudesFast[i] * 1024)
+
+print(AmplitudeSum * 1024)
+'''
 
 LEDColors = [-1.0 for x in range(0, LEDCount)]      # color range[0,1] of each LED in the chain
 LEDAmplitudes = [-1.0 for x in range(0, LEDCount)]  # amplitude of each LED in the chain
@@ -171,17 +181,37 @@ while(LEDsFilled < LEDCount) :
 
 
 OutputDataDiscrete = [-1.0 for x in range(0, LEDCount)] # THIS IS THE OUTPUT
+Output = [-1.0 for x in range(0, BIN_QTY)] # THIS IS THE OUTPUT
 
-for LED in range(0, LEDCount) :
-    Saturation = LEDAmplitudes[LED] * SatuartionAmplifier
-    SaturationFast = LEDAmplitudesFast[LED] * SatuartionAmplifier
+#for LED in range(0, LEDCount) :
+#    Saturation = LEDAmplitudes[LED] * SatuartionAmplifier
+#    SaturationFast = LEDAmplitudesFast[LED] * SatuartionAmplifier
+#
+#    OutSaturation = Saturation if SteadyBright else SaturationFast
+#    if (OutSaturation > 1) :
+#        OutSaturation = 1
+#    if (OutSaturation > LEDLimit) :
+#        OutSaturation = LEDLimit
+#    Color = CCtoHEX(LEDColors[LED], 1.0, OutSaturation)
+#    OutputDataDiscrete[LED] = Color
 
+for bin in range (0, BIN_QTY) :
+    Saturation = NoteAmplitudes[bin] * SatuartionAmplifier
+    SaturationFast = NoteAmplitudesFast[bin] * SatuartionAmplifier
     OutSaturation = Saturation if SteadyBright else SaturationFast
     if (OutSaturation > 1) :
         OutSaturation = 1
     if (OutSaturation > LEDLimit) :
         OutSaturation = LEDLimit
-    Color = CCtoHEX(LEDColors[LED], 1.0, OutSaturation)
-    OutputDataDiscrete[LED] = Color
 
-print(OutputDataDiscrete)
+    #print(OutSaturation)
+    
+    Color = CCtoHEX(NotePositions[bin], 1.0, OutSaturation)
+    Output[bin] = Color
+
+
+for i in range(0, BIN_QTY) :
+    print (Output[i])
+
+#print(Output)
+#print(OutputDataDiscrete)

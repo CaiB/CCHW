@@ -1,4 +1,7 @@
+#!/usr/bin/env python3
+
 import math
+import sys
 
 VALUE = 0.02
 DECIMAL_BITS = 10
@@ -42,10 +45,21 @@ def binaryValue(binary):
     return int(value)
 
 
-bits, value = fixedPointEstimate(VALUE, DECIMAL_BITS)
 
-print("binary: " + bits)
-print("value: " + str(value))
-print("whole/param equivilent: " + str(binaryValue(bits)))
-#print("error: " + str(abs(VALUE - value)))
-#print("squared error: " + str(sqr_err(VALUE, value)))
+n = len(sys.argv)
+
+if (n != 3):
+    value = 0
+    bitLength = 0
+else :
+    value = float(sys.argv[1])
+    bitLength = int(sys.argv[2])
+bits, value = fixedPointEstimate(value, bitLength)
+#print("binary: " + bits)
+#print("value: " + str(value))
+#print("whole/param equivilent: " + str(binaryValue(bits)))
+#print(bits+","+str(value)+","+str(binaryValue(bits)))
+
+sys.stdout.write(bits+","+str(value)+","+str(binaryValue(bits)))
+sys.stdout.flush()
+sys.exit(0)

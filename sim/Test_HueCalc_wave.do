@@ -10,12 +10,12 @@ add wave -noupdate -radix decimal /HueCalc_testbench/dut/notePreRectified
 add wave -noupdate -radix unsigned /HueCalc_testbench/dut/noteRectified
 add wave -noupdate -radix unsigned /HueCalc_testbench/dut/noteHue_o
 add wave -noupdate /HueCalc_testbench/dut/comparator
-add wave -noupdate /HueCalc_testbench/done
+add wave -noupdate /HueCalc_testbench/data_v
 add wave -noupdate /HueCalc_testbench/dut/clk
 add wave -noupdate /HueCalc_testbench/dut/rst
 add wave -noupdate /HueCalc_testbench/dut/cycle_cntr
 TreeUpdate [SetDefaultTree]
-WaveRestoreCursors {{Cursor 1} {799081 ps} 0}
+WaveRestoreCursors {{Cursor 1} {89209 ps} 0}
 quietly wave cursor active 1
 configure wave -namecolwidth 150
 configure wave -valuecolwidth 100

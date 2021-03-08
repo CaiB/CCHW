@@ -8,7 +8,7 @@ module AmpPreprocessor #(
     output logic [BIN_QTY - 1 : 0][W + D - 1 : 0] noteAmplitudes_o,
     output logic [BIN_QTY - 1 : 0][W + D - 1 : 0] noteAmplitudesFast_o,
     output logic [W + D - 1 + $clog2(BIN_QTY): 0] amplitudeSumNew_o,
-    output logic done,
+    output logic data_v,
 
     input logic [BIN_QTY - 1 : 0][W + D - 1 : 0] noteAmplitudes_i,
     input logic clk, rst
@@ -56,7 +56,7 @@ module AmpPreprocessor #(
         end
 
         // assumes synchronous reciever
-        done = &cycle_cntr;
+        data_v = &cycle_cntr;
         noteAmplitudes_o = noteAmplitudesReduced;
         noteAmplitudesFast_o = noteAmplitudesFast;
         amplitudeSumNew_o = amplitudeSumNew;
@@ -86,7 +86,7 @@ module AmpPreprocessor_testbench();
     logic [BIN_QTY - 1 : 0][W + D - 1 : 0] noteAmplitudes_o;
     logic [BIN_QTY - 1 : 0][W + D - 1 : 0] noteAmplitudesFast_o;
     logic [W + D - 1 + $clog2(BIN_QTY): 0] amplitudeSumNew_o;
-    logic done;
+    logic data_v;
     logic [BIN_QTY - 1 : 0][W + D - 1 : 0] noteAmplitudes_i;
     logic clk;
     logic rst;
@@ -106,7 +106,7 @@ module AmpPreprocessor_testbench();
         .noteAmplitudes_o       (noteAmplitudes_o       ),
         .noteAmplitudesFast_o   (noteAmplitudesFast_o   ),
         .amplitudeSumNew_o      (amplitudeSumNew_o      ),
-        .done                   (done                   ),
+        .data_v                 (data_v                 ),
         .noteAmplitudes_i       (noteAmplitudes_i       ),
         .clk                    (clk                    ),
         .rst                    (rst                    )
@@ -134,10 +134,9 @@ module AmpPreprocessor_testbench();
 
     task run();
         begin
-           wait(done);
            test_input(); 
            repeat(2) @(posedge clk);
-           wait(done);
+           wait(data_v);
         end
     endtask 
 

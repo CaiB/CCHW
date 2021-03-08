@@ -21,12 +21,12 @@ add wave -noupdate -radix unsigned /ColorCalc_testbench/dut/colorValueMax
 add wave -noupdate -radix unsigned /ColorCalc_testbench/dut/colorValueXHue_d1
 add wave -noupdate -radix unsigned /ColorCalc_testbench/dut/colorValueXHuex_d1
 add wave -noupdate -radix hexadecimal /ColorCalc_testbench/dut/rgb
-add wave -noupdate /ColorCalc_testbench/done
+add wave -noupdate /ColorCalc_testbench/data_v
 add wave -noupdate /ColorCalc_testbench/rst
 add wave -noupdate /ColorCalc_testbench/clk
 add wave -noupdate /ColorCalc_testbench/dut/cycle_cntr
 TreeUpdate [SetDefaultTree]
-WaveRestoreCursors {{Cursor 1} {1116056 ps} 0}
+WaveRestoreCursors {{Cursor 1} {98699 ps} 0}
 quietly wave cursor active 1
 configure wave -namecolwidth 150
 configure wave -valuecolwidth 100
