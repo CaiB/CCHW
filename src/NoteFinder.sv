@@ -4,31 +4,107 @@ interface Note;
     modport In(input position, input amplitude);
     modport Out(output position, output amplitude);
 endinterface
+/*
+interface NoteDistribution
+#();
+    logic []
+    logic active;
+endinterface*/
 
 module NoteFinder
-#(parameter N = 16, parameter BINS = 120)
+#(parameter N = 16, parameter BPO = 24, parameter OCT = 5, parameter BINS = OCT*BPO)
 (
-    Note.Out notes,
+    output logic peaksOut [0:11],
+    //Note.Out [11:0] notes,
     input logic unsigned [N-1:0] dftBins [0:BINS-1],
+    input logic startCycle,
     input logic clk, rst
 );
+    genvar i;
 
     // Pre-process DFT input data
         // Shift by some value (amplify)
         // IIR each bin
     
     // Find maximum of all bins
+    logic [N-1:0] OverallMaxBinVal;
+    FindMax120 #(.N(N)) MaxFinder(.maxValue(OverallMaxBinVal), .values(dftBins)); // TODO swap for other input
+
+    // Determine minimum threshold for peaks
+    // TODO: Tweak this as needed
+    logic [N-1:0] PeakThreshold;
+    assign PeakThreshold = OverallMaxBinVal >>> 3;
 
     // Smooth adjacent bins
 
     // Detect peaks
     // -> Positions are now 0-119
+    // -> Up to 60 peaks max =ceil(BINS/2)
+    logic BinHasPeak [0:BINS-1]; // TODO: change input
+    generate
+        for(i = 1; i < BINS-1; i++)
+        begin : PeakDetectors
+            PeakDetector #(.N(N)) PeakDet(.isPeak(BinHasPeak[i]), .left(dftBins[i - 1]), .right(dftBins[i + 1]), .here(dftBins[i]), .threshold(PeakThreshold));
+        end
+    endgenerate
+    PeakDetector #(.N(N)) PeakDetBot(.isPeak(BinHasPeak[0]), .left('0), .right(dftBins[1]), .here(dftBins[0]), .threshold(PeakThreshold));
+    PeakDetector #(.N(N)) PeakDetTop(.isPeak(BinHasPeak[119]), .left(dftBins[118]), .right('0), .here(dftBins[119]), .threshold(PeakThreshold));
+
+    // Operation manager
+    logic [3:0] ActivePeakSlot;
+    logic [$clog2(OCT)-1:0] ActiveOctave;
+    logic PeaksFinished, DoPeakOperation, ClearPeaks;
+    NoteOperationManager #(.OCT(OCT)) OpMgr(.activeNoteSlot(ActivePeakSlot), .activeOctave(ActiveOctave), .finished(PeaksFinished), .doOperation(DoPeakOperation), .clearIntermediate(ClearPeaks), .start(startCycle), .clk, .rst);
 
     // Adjust peak location within bin depending on surroundings (turn isPeak into numeric positions)
-    // -> Positions are now 0.0-119.0
+    // -> Positions returned are 0.0-23.999, so octaves are also soft-merged. qty up to 60 (BINS/2)
+    localparam NoteFPW = $clog2(BPO);
+    localparam NoteFPF = 16 - NoteFPW;
 
-    // Merge octaves (bins close to each other in other octaves)
-    // -> positions are now 0.0-23.0, qty up to 60 (BINS/2)
+    // This section assumes there's 2 bins per note.
+    logic [$clog2(BINS)-1:0] CurrentBinLeft, CurrentBinRight;
+    assign CurrentBinLeft = (ActiveOctave * BPO) + ({ActivePeakSlot, 1'b0}); // index of the left bin we're looking at
+    assign CurrentBinRight = CurrentBinLeft + 1'd1; // index of the right bin we're looking at
+    logic PeakSideIsL, PeakHere;
+    assign PeakSideIsL = BinHasPeak[CurrentBinLeft]; // whether there's a peak in the left bin of the 2 we're looking at
+    assign PeakHere = BinHasPeak[CurrentBinLeft] || BinHasPeak[CurrentBinRight]; // whether the active 2 bins have a peak at all
+
+    logic [(NoteFPW + NoteFPF)-1:0] NoteDistPosition;
+    PeakPlacer #(.N(N), .BPO(BPO), .FPW(NoteFPW), .FPF(NoteFPF)) PeakPlace(.peakPosition(NoteDistPosition),
+        .binIndex(PeakSideIsL ? ({ActivePeakSlot, 1'b0}) : ({ActivePeakSlot, 1'b0} + 1'd1)),
+        .left(PeakSideIsL ? (CurrentBinLeft == '0 ? '0 : dftBins[CurrentBinLeft - 1'd1]) : dftBins[CurrentBinLeft]),
+        .right(PeakSideIsL ? dftBins[CurrentBinRight] : (CurrentBinRight == BINS-1 ? '0 : dftBins[CurrentBinRight + 1'd1])),
+        .here(PeakSideIsL ? dftBins[CurrentBinLeft] : dftBins[CurrentBinRight]));
+
+    // Note: each slot spans 2 bins of storage
+    logic [N-1:0] SavedPeakPositions [0:11], SavedPeakAmplitudes [0:11]; // the currently saved peak's info
+    logic [N-1:0] NewPeakPosition, NewPeakAmplitude; // new peak info that will get written
+    logic SavedPeaksValid [0:11]; // whether each existing peak is valid
+    logic NewPeakValid, WritePeak; // whether new peak data is valid, and whether to write new data
+
+    PeakMergerItr #(.N(N)) PeakMerge(.outPos(NewPeakPosition), .outAmp(NewPeakAmplitude),
+        .outValid(NewPeakValid), .doRegWrite(WritePeak),
+        .isPeak(PeakHere),
+        .peakPosition(NoteDistPosition), .peakAmp(PeakSideIsL ? dftBins[CurrentBinLeft] : dftBins[CurrentBinRight]),
+        .regPos(SavedPeakPositions[ActivePeakSlot]), .regAmp(SavedPeakAmplitudes[ActivePeakSlot]), .regValid(SavedPeaksValid[ActivePeakSlot]));
+
+    // Re-registered versions of "Saved" signals, for placement into next sample-pipeline stage
+    logic [N-1:0] RegPeakPositions [0:11], RegPeakAmplitudes [0:11];
+    logic RegPeaksValid [0:11];
+   
+    generate
+        for(i = 0; i < 12; i++)
+        begin : PeakStorage
+            // Stores the current peaks. Each slot gets filled with a peak when one is found in the correct location.
+            // If more get found in later cycles from higher octaves, the values get updated with a weighted average of (before + new).
+            PeakRegister #(.N(N)) PeakReg(.amp(SavedPeakAmplitudes[i]), .pos(SavedPeakPositions[i]), .hasPeak(SavedPeaksValid[i]), .ampIn(NewPeakAmplitude), .posIn(NewPeakPosition), .peakIn(NewPeakValid), .write(WritePeak && DoPeakOperation && ActivePeakSlot == i), .clk, .rst(rst || ClearPeaks));
+
+            // Re-registered version of previous data, only updated once each sample is finished processing. Used as note association is a second sample-pipeline stage.
+            PeakRegister #(.N(N)) PeakReg2(.amp(RegPeakAmplitudes[i]), .pos(RegPeakPositions[i]), .hasPeak(RegPeaksValid[i]), .ampIn(SavedPeakAmplitudes[i]), .posIn(SavedPeakPositions[i]), .peakIn(SavedPeaksValid[i]), .write(PeaksFinished), .clk, .rst);
+        end
+    endgenerate
+
+    assign peaksOut = RegPeaksValid;
 
     // Associate peaks to existing notes, shifting them if needed
     // -> notes max qty 12 (BPO/2)
@@ -41,6 +117,7 @@ module NoteFinder
     // 
 endmodule
 
+// Checks if the middle bin is a local maximum, and is above a given threshold.
 module PeakDetector
 #(parameter N = 16)
 (
@@ -51,4 +128,217 @@ module PeakDetector
     logic localMax;
     assign localMax = (left < here) && (here > right);
     assign isPeak = localMax & (here > threshold);
+endmodule
+
+// Given 120 numbers of width N, outputs the highest among all of them.
+module FindMax120 // TODO This is at the very least moderately hideous. Could probably make a recursive one that operates on 2^n sizes and assume the rest is synthesized away.
+#(parameter N = 16)
+(
+    output logic unsigned [N-1:0] maxValue,
+    input logic unsigned [N-1:0] values [0:119]
+);
+    logic unsigned [N-1:0] Level1 [0:59], Level2 [0:29], Level3 [0:14], Level4 [0:6], Level5 [0:2], Level6 [0:2], Level7;
+    genvar i;
+    generate
+        for(i = 0; i < 60; i++)
+        begin : CompL1
+            assign Level1[i] = (values[i*2] > values[(i*2)+1]) ? values[i*2] : values[(i*2)+1];
+        end
+
+        for(i = 0; i < 30; i++)
+        begin : CompL2
+            assign Level2[i] = (Level1[i*2] > Level1[(i*2)+1]) ? Level1[i*2] : Level1[(i*2)+1];
+        end
+
+        for(i = 0; i < 15; i++)
+        begin : CompL3
+            assign Level3[i] = (Level2[i*2] > Level2[(i*2)+1]) ? Level2[i*2] : Level2[(i*2)+1];
+        end
+
+        for(i = 0; i < 7; i++) // 1 extra
+        begin : CompL4
+            assign Level4[i] = (Level3[i*2] > Level3[(i*2)+1]) ? Level3[i*2] : Level3[(i*2)+1];
+        end
+
+        for(i = 0; i < 3; i++)
+        begin : CompL5
+            assign Level5[i] = (Level4[i*2] > Level4[(i*2)+1]) ? Level4[i*2] : Level4[(i*2)+1];
+        end // 1 extra
+    endgenerate
+
+    assign Level6[0] = (Level5[0] > Level5[1]) ? Level5[0] : Level5[1];
+    assign Level6[1] = (Level5[2] > Level4[6]) ? Level5[2] : Level4[6];
+    assign Level7 = (Level6[0] > Level6[1]) ? Level6[0] : Level6[1];
+    assign maxValue = (Level7 > Level3[14]) ? Level7 : Level3[14];
+endmodule
+
+// FPW must be at least $clog2(BPO).
+// Increasing FPF above N does not yield better precision.
+module PeakPlacer
+#(parameter N = 16, parameter BPO = 24, parameter FPW = 5, parameter FPF = 10)
+(
+    output logic [(FPW+FPF)-1:0] peakPosition, // between 0 (inc) and BPO (exc)
+    input logic [$clog2(BPO)-1:0] binIndex, // between 0 and BPO-1
+    input logic [N-1:0] left, right, here
+);
+    logic [N-1:0] DiffL, DiffR, TotalAdjacentDiff;
+    logic [(N*2)-1:0] PropDiffL, PropDiffR;
+    logic [FPF-1:0] Fractional;
+    
+    always_comb
+    begin
+        DiffL = here - left;
+        DiffR = here - right;
+        TotalAdjacentDiff = DiffL + DiffR;
+        PropDiffL = (DiffL << N) / TotalAdjacentDiff; // Bottom N bits are fractional part
+        PropDiffR = (DiffR << N) / TotalAdjacentDiff;
+
+        if(DiffL < DiffR) // More towards left
+        begin
+            Fractional = (1 << (FPF - 1)) + (PropDiffL >> (N - FPF));
+            if(binIndex == 0) peakPosition = {(BPO - 1'd1), Fractional}; // Handles moving to the left of bin 0
+            else peakPosition = {(binIndex - 1'd1), Fractional};
+        end
+        else // More towards right
+        begin
+            Fractional = (1 << (FPF - 1)) - (PropDiffR >> (N - FPF));
+            peakPosition = {binIndex, Fractional};
+        end
+    end
+endmodule
+
+
+// Merges peaks from within the same folded bin using a weighted average. Cannot handle end wrap-around.
+module PeakWAvg
+#(parameter N = 16)
+(
+    output logic [N-1:0] peakAmp, peakPos, // amplitude and position of merged peak
+    input logic [N-1:0] in0Amp, in0Pos, // amplitude and position of input peak 0
+    input logic [N-1:0] in1Amp, in1Pos // amplitude and position of input peak 1
+);
+    logic [(N*2)-1:0] WeightedSum;
+
+    always_comb
+    begin
+        peakAmp = in0Amp + in1Amp;
+        WeightedSum = (in0Amp * in0Pos) + (in1Amp * in1Pos);
+        peakPos = WeightedSum / peakAmp;
+    end
+endmodule
+
+module PeakMergerItr
+#(parameter N = 16)
+(
+    output logic [N-1:0] outPos, outAmp, // the averaged data to save to the register
+    output logic outValid, // whether the register should be valid, only updated if writing
+    output logic doRegWrite, // whether to write changes to the register
+    input logic [N-1:0] peakPosition, peakAmp, // where and how strong the new potential peak is
+    input logic isPeak, // whether this new data actually contains a peak
+    input logic [N-1:0] regPos, regAmp, // the current data in the peak register for this slot
+    input logic regValid // whether the peak register contains a valid peak for this slot
+);
+    logic [N-1:0] MergedPeakAmp, MergedPeakPos; // The results of a weighted average of new data, and existing data in the register
+    PeakWAvg #(.N(N)) RegAvgr(.peakAmp(MergedPeakAmp), .peakPos(MergedPeakPos), .in0Amp(regAmp), .in0Pos(regPos), .in1Amp(peakAmp), .in1Pos(peakPosition));
+
+    always_comb
+    begin
+        doRegWrite = isPeak;
+        outValid = isPeak | regValid;
+
+        if(isPeak && ~regValid) // we have a peak, and there isn't anything in the register yet
+        begin
+            outPos = peakPosition;
+            outAmp = peakAmp;
+        end
+        else if(isPeak && regValid) // we have a peak, and there is existing data we need to merge with
+        begin
+            outPos = MergedPeakPos;
+            outAmp = MergedPeakAmp;
+        end
+        else // we don't have a peak, do nothing
+        begin
+            outPos = 'x;
+            outAmp = 'x;
+        end
+    end
+endmodule
+
+
+module PeakRegister
+#(parameter N = 16)
+(
+    output logic [N-1:0] amp, pos,
+    output logic hasPeak, // whether this location has a peak, and data is valid
+    input logic [N-1:0] ampIn, posIn,
+    input logic peakIn, // sets whether or not this is a valid peak
+    input logic write,
+    input logic clk, rst
+);
+    always_ff @(posedge clk)
+        if(rst) hasPeak <= '0;
+        else
+        begin
+            if(write)
+            begin
+                amp <= ampIn;
+                pos <= posIn;
+                hasPeak <= peakIn;
+            end
+        end
+endmodule
+
+module NoteOperationManager
+#(parameter OCT = 5)
+(
+    output logic [3:0] activeNoteSlot,
+    output logic [$clog2(OCT)-1:0] activeOctave,
+    output logic finished, doOperation, clearIntermediate,
+    input logic start,
+    input logic clk, rst
+);
+    typedef enum { WAIT, ACTIVE, FINISHED, XXX } NoteOpMgrState;
+    NoteOpMgrState Present, Next;
+    logic [1:0] WaitCounter;
+
+    always_ff @(posedge clk) // State register
+        if(rst) Present <= WAIT;
+        else Present <= Next;
+    
+    always_ff @(posedge clk) // Timer register
+        if(rst) WaitCounter <= '0;
+        else if(Present == ACTIVE) WaitCounter <= WaitCounter + 1'b1;
+
+    always_comb // Next state
+    begin
+        Next = XXX;
+        case(Present)
+            WAIT: if(start) Next = ACTIVE;
+                  else Next = WAIT; // @LB
+            ACTIVE: if(activeOctave == (OCT-1) && activeNoteSlot == (12-1) && doOperation) Next = FINISHED;
+                    else Next = ACTIVE; // @LB
+            FINISHED: Next = WAIT;
+            default: Next = XXX;
+        endcase
+    end
+
+    always_comb // Combinational outputs
+    begin
+        doOperation = WaitCounter[0] & WaitCounter[1] & (Present == ACTIVE); // True every 4th clock cycle while active
+        finished = (Present == FINISHED);
+        clearIntermediate = (Present == WAIT) && start;
+    end
+
+    always_ff @(posedge clk) // Registered outputs
+    begin
+        if(rst | finished)
+        begin
+            activeNoteSlot <= '0;
+            activeOctave <= '0;
+        end
+        else if(doOperation)
+        begin
+            activeNoteSlot <= (activeNoteSlot == (12-1) ? '0 : activeNoteSlot + 1'b1);
+            activeOctave <= ((activeNoteSlot == (12-1) && activeOctave != 4) ? activeOctave + 1'b1 : activeOctave);
+        end
+    end
 endmodule

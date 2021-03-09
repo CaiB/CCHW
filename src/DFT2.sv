@@ -192,10 +192,13 @@ module OctaveSelector
             Previous <= '1;
             Present <= '0;
         end
-        else if(incr)
+        else
         begin
-            Previous <= Present;
-            Present <= Present + 1'd1;
+            if(incr)
+            begin
+                Previous <= Present;
+                Present <= Present + 1'd1;
+            end
         end
     end
 
