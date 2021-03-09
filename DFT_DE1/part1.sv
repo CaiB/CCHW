@@ -50,7 +50,7 @@ module part1 (
 	parameter BPO = 24;
 	parameter OC = 5;
 	parameter N = 16;
-	parameter TOPSIZE = 1024;
+	parameter TOPSIZE = 8192;
 	parameter ND = (N*2)+(OC-1);
 
 	logic signed [24:0] rawInput;
@@ -61,13 +61,32 @@ module part1 (
 	logic unsigned [ND-1:0] outBins [0:(BPO*OC)-1];
 	DFT #(.BPO(BPO), .OC(OC), .N(N), .TOPSIZE(TOPSIZE), .ND(ND)) TheDFT(.outBins, .inputSample, .sampleReady(read_ready), .doingRead(read), .clk(CLOCK_50), .rst(reset));
 
+	logic NFPeaks [0:11];
+	logic unsigned [N-1:0] BinsSmall [0:(BPO*OC)-1];
+	logic NFStart;
+	NoteFinder #(.BPO(BPO), .OCT(OC), .N(N)) TheNoteFinder(.peaksOut(NFPeaks), .dftBins(BinsSmall), .startCycle(NFStart), .clk(CLOCK_50), .rst(reset));
+
 	genvar i;
 	generate
-		for(i = 48; i < 58; i++)
-		begin : MakeLEDs
-			assign LEDR[57 - i] = (outBins[i][28] | outBins[i][29] | outBins[i][30] | outBins[i][31]);
+		// Small bins
+		for(i = 0; i < (BPO*OC); i++)
+		begin : MakeSmallBins
+			assign BinsSmall[i] = outBins[i][(ND-1):(ND-N)];
+		end
+
+		// Outputs
+		for(i = 0; i < 10; i++)
+		begin : AssignLEDRs
+			assign LEDR[i] = NFPeaks[i];
 		end
 	endgenerate
+
+	logic [3:0] DelayLine;
+	always_ff @(posedge CLOCK_50)
+		if(reset) DelayLine <= '0;
+		else DelayLine <= (DelayLine << 1) | read;
+	
+	assign NFStart = DelayLine[3];
 	/* End custom code */
 	
 	clock_generator my_clock_gen(

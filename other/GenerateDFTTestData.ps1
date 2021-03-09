@@ -2,7 +2,7 @@ $DataFile = 'dfttestdata.txt';
 $TestFile = '../src/Test_DFTWithData.sv';
 
 # Waves are defined as (Freqency [Hz], Amplitude [0~1], Phase [deg]).
-$Wave1 = @(880, 0.4, 0);
+$Wave1 = @(167.54, 0.3, 0);
 $Wave2 = @(440, 0.3, 90);
 #$Wave2 = @(0, 0, 0);
 $Wave3 = @(89, 0.3, 127);
@@ -14,7 +14,7 @@ $SampleRate = 48000;
 $MagMultiplier = 1024;
 
 # How many samples long the data should be.
-$Length = 1080;
+$Length = 8250;
 
 # How closely the output is expected to match the theoretical output. +/-15% error bounds is 0.15.
 $TestErrorBounds = 0.1;
@@ -59,13 +59,22 @@ for($Bin = 0; $Bin -LT $TotalBinCount; $Bin++)
     $CosSum = 0.0;
     for($Sample = 0; $Sample -LT $Length; $Sample++)
     {
-        $Sin = [Math]::Sin($Freq / $SampleRate * $Sample * 2 * [Math]::PI) * $MagTrig;
-        $Cos = [Math]::Cos($Freq / $SampleRate * $Sample * 2 * [Math]::PI) * $MagTrig;
+        $Sin = [Math]::Sin($Freq / $SampleRate * $Sample * 2 * [Math]::PI);
+        $Cos = [Math]::Cos($Freq / $SampleRate * $Sample * 2 * [Math]::PI);
         $SinSum += $Sin * $WaveData[$Sample];
         $CosSum += $Cos * $WaveData[$Sample];
     }
+    # Proper square root
     $Magnitude = [Math]::Sqrt($SinSum * $SinSum + $CosSum * $CosSum);
-    #Write-Host "$Magnitude";
+    
+    # Approximate norm
+    #$SinSum = [Math]::Abs($SinSum);
+    #$CosSum = [Math]::Abs($CosSum);
+    #if($SinSum -GT $CosSum) { $Magnitude = $SinSum + ($CosSum -SHR 1); }
+    #else { $Magnitude = $CosSum + ($SinSum -SHR 1); }
+
+    $Magnitude *= $MagTrig;
+    Write-Host "$Magnitude";
     $MagRound = [int32][Math]::Round($Magnitude);
     $ExpectedValues += ("32'd{0}, " -F $MagRound);
 }
@@ -77,6 +86,7 @@ $UpperBound = 1.0 + $TestErrorBounds;
 $TestBenchContents = 
 @"
 // WARNING: THIS FILE WILL BE OVERWRITTEN BY A SCRIPT. SAVE ANY CHANGES ELSEWHERE!
+``timescale 1 ps / 1 ps
 module Test_DFT;
     localparam BINCOUNT = $TotalBinCount;
     localparam LEN = $Length;
@@ -86,7 +96,7 @@ module Test_DFT;
     logic sampleReady;
     logic clk, rst;
 
-    DFT #(.BPO(24), .OC(5), .N(16), .TOPSIZE(1024)) DFTDUT(.outBins, .inputSample, .sampleReady, .clk, .rst);
+    DFT #(.BPO(24), .OC(5), .N(16), .TOPSIZE(8192)) DFTDUT(.outBins, .inputSample, .sampleReady, .clk, .rst);
 
     logic signed [15:0] InputData [0:LEN-1];
     initial `$readmemh("../other/dfttestdata.txt", InputData);
@@ -116,7 +126,7 @@ module Test_DFT;
             @(posedge clk);
             sampleReady = '0;
             repeat(250) @(posedge clk);
-            `$display("Sample %4d finished", i);
+            if(i < 20 || i % 10 == 0) `$display("Sample %4d finished", i);
         end
     endtask
 
@@ -124,7 +134,7 @@ module Test_DFT;
         `$display("Raw Data:");
         for(int i = 0; i < $TotalBinCount; i++) `$display("%d,%d", ExpectedOutputs[i], outBins[i]);
 
-        `$display("Comparisons:");
+        /*`$display("Comparisons:");
         for(int i = 0; i < $TotalBinCount; i++)
         begin
             real min, max;
@@ -132,7 +142,7 @@ module Test_DFT;
             max = real'(ExpectedOutputs[i]) * $UpperBound;
             assert(outBins[i] > min) else `$display("Bin %d had too low value %d, expected %d.", i, outBins[i], ExpectedOutputs[i]);
             assert(outBins[i] < max) else `$display("Bin %d had too high value %d, expected %d.", i, outBins[i], ExpectedOutputs[i]);
-        end
+        end*/
     endtask
 
     initial

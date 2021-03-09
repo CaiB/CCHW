@@ -4,7 +4,7 @@ $StartFreq = 880;
 $SampleRate = 48000;
 $BinCount = 24;
 $MagMultiplier = 1024;
-$TopOctaveLen = 1024;
+$TopOctaveLen = 8192;
 $Octaves = 5;
 
 if(Test-Path $CosFile) { Remove-Item $CosFile; }

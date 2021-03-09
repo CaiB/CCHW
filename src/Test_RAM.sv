@@ -12,7 +12,7 @@ module Test_RAM;
     logic clk, rst;
 
 `ifdef RAM_ASIC
-    RAM_16B_8192_AR4_LP DUT(.Q(DataOut), .CLK(clk), .CEN('0), .WEN(~DoWrite), .A(Address), .D(DataIn), .EMA('0), .EMAW('0), .EMAS('0), .RET1N('1), .VSS('0), .VDD('1));
+    RAM_16B_8192_AR4_LP DUT(.Q(DataOut), .CLK(clk), .CEN('0), .WEN(~DoWrite), .A(Address), .D(DataIn), .EMA('0), .EMAW('0), .EMAS('0), .RET1N('1));
 `elsif RAM_FPGA
     RAM_8192 DUT(.address(Address), .clock(clk), .data(DataIn), .wren(DoWrite), .q(DataOut));
 `else
