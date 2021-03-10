@@ -4,12 +4,6 @@ interface Note;
     modport In(input position, input amplitude);
     modport Out(output position, output amplitude);
 endinterface
-/*
-interface NoteDistribution
-#();
-    logic []
-    logic active;
-endinterface*/
 
 module NoteFinder
 #(parameter N = 16, parameter BPO = 24, parameter OCT = 5, parameter BINS = OCT*BPO)
@@ -17,6 +11,7 @@ module NoteFinder
     output logic peaksOut [0:11],
     //Note.Out [11:0] notes,
     input logic unsigned [N-1:0] dftBins [0:BINS-1],
+    input logic [9:0] minThreshold,
     input logic startCycle,
     input logic clk, rst
 );
@@ -28,12 +23,12 @@ module NoteFinder
     
     // Find maximum of all bins
     logic [N-1:0] OverallMaxBinVal;
-    FindMax120 #(.N(N)) MaxFinder(.maxValue(OverallMaxBinVal), .values(dftBins)); // TODO swap for other input
+    FindMax120Approx #(.N(N)) MaxFinder(.maxValue(OverallMaxBinVal), .values(dftBins)); // TODO swap for other input
 
     // Determine minimum threshold for peaks
     // TODO: Tweak this as needed
     logic [N-1:0] PeakThreshold;
-    assign PeakThreshold = OverallMaxBinVal >>> 3;
+    assign PeakThreshold = (OverallMaxBinVal >>> 3) | {minThreshold, '0};
 
     // Smooth adjacent bins
 
@@ -170,6 +165,27 @@ module FindMax120 // TODO This is at the very least moderately hideous. Could pr
     assign Level6[1] = (Level5[2] > Level4[6]) ? Level5[2] : Level4[6];
     assign Level7 = (Level6[0] > Level6[1]) ? Level6[0] : Level6[1];
     assign maxValue = (Level7 > Level3[14]) ? Level7 : Level3[14];
+endmodule
+
+// Given 120 numbers of width N, outputs the highest among all of them. This one is a lot faster, jankier, and less precise.
+// Inputting a worst-case peak of a 1 bit followed by all 0 bits, this could at maximum output that same starting 1 bit, followed by all ones, effectively doubling the peak value.
+// Inputting a best casxe peak value of some number of 0 bits followed by contiguous 1 bits, this will output the precise peak
+// Chances are that it'll usually be pretty close, since there is often more than 1 reasonably large peak, and as such most of the bits under the main peaks' leading 1 will be filled with 1s
+// Therefore it's safe to assume the output is about 1.5-2.0x as large as the largest peak
+module FindMax120Approx // TODO This is at the very least moderately hideous. Could probably make a recursive one that operates on 2^n sizes and assume the rest is synthesized away.
+#(parameter N = 16)
+(
+    output logic unsigned [N-1:0] maxValue,
+    input logic unsigned [N-1:0] values [0:119]
+);
+    assign maxValue = values[0] | values[1] | values[2] | values[3] | values[4] | values[5] | values[6] | values[7] | values[8] | values[9] | values[10] | values[11] | values[12] | values[13] | values[14] | values[15] |
+        values[16] | values[17] | values[18] | values[19] | values[20] | values[21] | values[22] | values[23] | values[24] | values[25] | values[26] | values[27] | values[28] | values[29] | values[30] | values[31] |
+        values[32] | values[33] | values[34] | values[35] | values[36] | values[37] | values[38] | values[39] | values[40] | values[41] | values[42] | values[43] | values[44] | values[45] | values[46] | values[47] |
+        values[48] | values[49] | values[50] | values[51] | values[52] | values[53] | values[54] | values[55] | values[56] | values[57] | values[58] | values[59] | values[60] | values[61] | values[62] | values[63] |
+        values[64] | values[65] | values[66] | values[67] | values[68] | values[69] | values[70] | values[71] | values[72] | values[73] | values[74] | values[75] | values[76] | values[77] | values[78] | values[79] |
+        values[80] | values[81] | values[82] | values[83] | values[84] | values[85] | values[86] | values[87] | values[88] | values[89] | values[90] | values[91] | values[92] | values[93] | values[94] | values[95] |
+        values[96] | values[97] | values[98] | values[99] | values[100] | values[101] | values[102] | values[103] | values[104] | values[105] | values[106] | values[107] | values[108] | values[109] | values[110] |
+        values[111] | values[112] | values[113] | values[114] | values[115] | values[116] | values[117] | values[118] | values[119];
 endmodule
 
 // FPW must be at least $clog2(BPO).

@@ -257,7 +257,7 @@ module OctaveStorageRAM
     logic DataValid, Filled; // Filled indicates we;re about to complete the first write pass. DataValid becomes true once we are ready to read back at address 0.
     logic [N-1:0] RAMOut, RAMIn, OldRegOut;
     logic RAMWrite;
-    assign RAMIn = newSample;
+    assign RAMIn = sample0; //newSample;
 
     SampleRegister #(.N(N)) RegEnd(.out(OldRegOut), .in(RAMOut), .en(writeSample), .clk, .rst);
 

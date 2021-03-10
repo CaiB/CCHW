@@ -3,7 +3,7 @@ $TestFile = '../src/Test_DFTWithData.sv';
 
 # Waves are defined as (Freqency [Hz], Amplitude [0~1], Phase [deg]).
 $Wave1 = @(167.54, 0.3, 0);
-$Wave2 = @(440, 0.3, 90);
+$Wave2 = @(420.69, 0.3, 90);
 #$Wave2 = @(0, 0, 0);
 $Wave3 = @(905.79, 0.3, 127);
 #$Wave3 = @(0, 0, 0);
@@ -14,13 +14,13 @@ $SampleRate = 48000;
 $MagMultiplier = 1024;
 
 # How many samples long the data should be.
-$Length = 16500;
+$Length = 10000;
 
 # How closely the output is expected to match the theoretical output. +/-15% error bounds is 0.15.
 $TestErrorBounds = 0.1;
 
 # Data cuts off and becomes all 0s after this sample index. Set to 0 for no cutoff.
-$Cutout = 7000;
+$Cutout = 0;
 
 $DataContents = "";
 $WaveData = [double[]]::new($Length);
