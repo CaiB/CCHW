@@ -4,7 +4,7 @@
 module DFT
 #(parameter BPO = 24, parameter OC = 5, parameter N = 16, parameter TOPSIZE = 8192, parameter ND = (N*2)+(OC-1))
 (
-    output logic unsigned [ND-1:0] outBins [0:(BPO*OC)-1],
+    output logic unsigned [ND-1:0] outBins [0:(BPO*OC)-1], // the magnitudes in each frequency bin
     output logic doingRead, // on while we are doing a read on the input, useful for FPGA
     input logic signed [N-1:0] inputSample, // New audio data to add
     input logic sampleReady, // Whether to new audio data is ready
@@ -22,7 +22,7 @@ module DFT
     OctaveSelector #(.OCT(OC)) OctSel(.enableOctaves(EnableOctaves), .incr(AdvanceOctave), .clk, .rst);
 
     // Sin and cos tables
-    localparam NS = 6; // trig table adddress width, set by script
+    localparam NS = 6; // trig table adddress width, specified by GenerateTables.ps1
     logic signed [N-1:0] SinOutput, CosOutput;
     logic [NS-1:0] TrigTablePositions [0:OC-1];
     SinTables #(.N(N), .BINS(BPO), .NS(NS)) SinTab(.value(SinOutput), .bin(CurrentOctaveBinIndex), .position(TrigTablePositions[ActiveOctave]));
@@ -83,7 +83,7 @@ module OctaveManager
 
     localparam SUMSIZE = $clog2(SIZE) + NO;
     logic signed [SUMSIZE-1:0] SinSum [0:BINS-1], CosSum [0:BINS-1]; // The current cumulative sum of all samples' sin/cos products
-    logic signed [SUMSIZE-1:0] AbsSinSum, AbsCosSum; // TODO: Subtract, then add immediately after so that we don't need to store all of the products, but only 1. They take up a ton of resources.
+    logic signed [SUMSIZE-1:0] AbsSinSum, AbsCosSum;
 
     always_comb
     begin

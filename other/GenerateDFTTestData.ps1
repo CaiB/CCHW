@@ -5,7 +5,7 @@ $TestFile = '../src/Test_DFTWithData.sv';
 $Wave1 = @(167.54, 0.3, 0);
 $Wave2 = @(440, 0.3, 90);
 #$Wave2 = @(0, 0, 0);
-$Wave3 = @(89, 0.3, 127);
+$Wave3 = @(905.79, 0.3, 127);
 #$Wave3 = @(0, 0, 0);
 
 $SampleRate = 48000;
@@ -14,13 +14,13 @@ $SampleRate = 48000;
 $MagMultiplier = 1024;
 
 # How many samples long the data should be.
-$Length = 8250;
+$Length = 16500;
 
 # How closely the output is expected to match the theoretical output. +/-15% error bounds is 0.15.
 $TestErrorBounds = 0.1;
 
 # Data cuts off and becomes all 0s after this sample index. Set to 0 for no cutoff.
-$Cutout = 0;
+$Cutout = 7000;
 
 $DataContents = "";
 $WaveData = [double[]]::new($Length);
@@ -103,6 +103,8 @@ module Test_DFT;
     logic unsigned [31:0] ExpectedOutputs [0:BINCOUNT-1];
     assign ExpectedOutputs = { $ExpectedValues };
 
+    integer FileHandle;
+
     initial
     begin
         clk <= '0;
@@ -118,6 +120,7 @@ module Test_DFT;
         @(posedge clk);
     endtask
 
+    string FileLine = "";
     task InsertData(int samples);
         for(int i = 0; i < samples; i++)
         begin
@@ -127,6 +130,10 @@ module Test_DFT;
             sampleReady = '0;
             repeat(250) @(posedge clk);
             if(i < 20 || i % 10 == 0) `$display("Sample %4d finished", i);
+
+            for(int j = 0; j < BINCOUNT; j++) FileLine = `$sformatf("%s%0d,", FileLine, outBins[j]);
+            `$fwrite(FileHandle, "%s\n", FileLine);
+            FileLine = "";
         end
     endtask
 
@@ -147,9 +154,13 @@ module Test_DFT;
 
     initial
     begin
+        FileHandle = `$fopen("dftoutput.csv", "w");
+
         Reset();
         InsertData(LEN);
         CheckOutputs();
+
+        `$fclose(FileHandle);
         `$stop;
     end
 endmodule
