@@ -19,7 +19,7 @@ module LinearVisualizer #(
 ) (
     output logic [BIN_QTY - 1 : 0][23 : 0] rgb,
     output logic [BIN_QTY - 1 : 0][$clog2(LEDS) - 1 : 0] LEDCounts,
-    output logic done,                     // comms input from visualizer
+    output logic data_v,                     // comms input from visualizer
     
     input logic [BIN_QTY - 1 : 0][W + D - 1 : 0] noteAmplitudes,
     input logic [BIN_QTY - 1 : 0][W + D - 1 : 0] notePositions,
@@ -38,16 +38,9 @@ module LinearVisualizer #(
     logic [BIN_QTY - 1 : 0] hueCalcDones;       // not currently used
     logic [BIN_QTY - 1 : 0] colorCalcDones;     // not currently used
 
-    logic start_latched, run;
+    logic p2_start;
 
-    // system run logic
-    always_ff @(clk) begin
-        if (done  == '1) start_latched <= '0;
-        if (start == '1) start_latched <= '1;
-    end
-
-    assign done = &colorCalcDones;
-    assign run = start_latched | start;
+    // -----------------------------  PHASE 1 LOGIC   -----------------------------
 
     // computes the relative amplitudes and their sum
     AmpPreprocessor #(
@@ -61,8 +54,9 @@ module LinearVisualizer #(
         .amplitudeSumNew_o      (amplitudeSum           ),
         .data_v                 (ampPreprocessorDone    ),
         .noteAmplitudes_i       (noteAmplitudes         ),
+        .start                  (start                  ),
         .clk                    (clk                    ),
-        .rst                    (rst || !run            )
+        .rst                    (rst                    )
     );
 
     // computes the hue of each bin given its position
@@ -70,16 +64,22 @@ module LinearVisualizer #(
         for (i = 0; i < BIN_QTY; i++) begin : hue_proc
             HueCalc #(
                 .D(D),
-                .BinsPerOctave      (BIN_QTY*2)
+                .BinsPerOctave(BIN_QTY*2)
             ) binHueCalc_u (
                 .noteHue_o      (hues[i]         ),
                 .data_v         (hueCalcDones[i] ),
                 .notePosition_i (notePositions[i][D - 1 : 0]),  // only the decimal component
+                .start          (start           ),
                 .clk            (clk             ),
-                .rst            (rst || !run     )
+                .rst            (rst             )
             );
         end
     endgenerate
+
+
+    // -----------------------------  PHASE 2 LOGIC   -----------------------------
+
+    assign p2_start = &{hueCalcDones, ampPreprocessorDone};
 
     // computes the number LEDs to be assigned to each bin color
     LEDCountCalc #(
@@ -92,8 +92,9 @@ module LinearVisualizer #(
         .data_v             (LEDCountDone),
         .noteAmplitudes_i   (amplitudes  ),
         .amplitudeSumNew_i  (amplitudeSum),
+        .start              (p2_start    ),
         .clk                (clk         ),
-        .rst                (rst || !run )
+        .rst                (rst         )
     );
     
     // computes the color of each bin given their hue and amplitude
@@ -110,12 +111,15 @@ module LinearVisualizer #(
                 .data_v             (colorCalcDones[j]),
                 .noteAmplitude_i    (amplitudes[j]    ),
                 .noteAmplitudeFast_i(amplitudesFast[j]),
-                .noteHue_i          (hues          [j]),
+                .noteHue_i          (hues[j]          ),
+                .start              (p2_start         ),
                 .clk                (clk              ),
-                .rst                (rst || !run      )
+                .rst                (rst              )
             );
         end
     endgenerate
+
+    assign data_v = {colorCalcDones, LEDCountDone};
 
 endmodule
 
@@ -138,7 +142,7 @@ module LinearVisualizer_testbench();
 
     logic [BIN_QTY - 1 : 0][23 : 0] rgb;
     logic [BIN_QTY - 1 : 0][$clog2(LEDS) - 1 : 0] LEDCounts;
-    logic done;
+    logic data_v;
     
     logic [BIN_QTY - 1 : 0][W + D - 1 : 0] noteAmplitudes;
     logic [BIN_QTY - 1 : 0][W + D - 1 : 0] notePositions;
@@ -169,7 +173,7 @@ module LinearVisualizer_testbench();
     ) dut (
         .rgb            (rgb            ),
         .LEDCounts      (LEDCounts      ),
-        .done           (done           ),
+        .data_v         (data_v         ),
         .noteAmplitudes (noteAmplitudes ),
         .notePositions  (notePositions  ),
         .start          (start          ),
