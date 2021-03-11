@@ -14,7 +14,7 @@ module LEDDriver #(
     input  logic clk, rst                   // standard inputs
 );
 
-    logic [(24*LEDS)-1:0] led_rgb;
+    //logic [(24*LEDS)-1:0] led_rgb;
 
     initial assert (FREQ <= 25_000_000); // WS2801 LEDs take a maximum frequency of 25 MHz
 
@@ -61,6 +61,148 @@ module LEDDriver #(
     assign dOut   = led_rgb[LEDS*24 - 1 - loadCntr] && (ns == loadState);   // reads data from msb to lsb
     assign clkOut = clk && (ps == loadState);
     assign done   = (ps == waitState);
+
+endmodule
+
+module LEDDriver2 #(
+    parameter LEDS  = 50,                   // number of LEDs being drivern
+    parameter FREQ  = 12_500_000,           // clk frequency
+    parameter BIN_QTY = 12
+) (
+    output logic dOut, clkOut,              // outputs to LED
+    output logic done,                      // comms output to visualizer
+
+    input logic [BIN_QTY - 1 : 0][23 : 0] rgb,
+    input logic [BIN_QTY - 1 : 0][$clog2(LEDS) - 1 : 0] LEDCounts,
+    input logic start,                     // comms input from visualizer
+    input logic clk, rst                   // standard inputs
+);
+
+    localparam waitCntrSize = $clog2(FREQ/1000); // 1~2 ms wait
+
+    logic [BIN_QTY - 1 : 0][23 : 0] rgbRegistered;
+    logic [BIN_QTY - 1 : 0][$clog2(LEDS) - 1 : 0] LEDCountsRegistered;
+
+    logic [waitCntrSize - 1 : 0] WaitCntr;
+    logic [$clog2(BIN_QTY) - 1 : 0] BinCntr;
+    logic [5 : 0] SerialCntr;
+
+    logic [23 : 0] Color;
+    logic [$clog2(LEDS) - 1 : 0] ColorCount;
+
+    logic data_v;
+
+
+    typedef enum logic [1:0] {WAIT_S, CNTR_S, LOAD_S} state;
+    state ps, ns;
+
+
+    // state transitioning
+    always_ff @(posedge clk) begin
+        if (rst) ps <= WAIT_S;
+        else ps <= ns;
+    end
+
+    // next state logic
+    always_comb begin
+        case (ps)
+            WAIT_S: if (&WaitCntr)                          ns = CNTR_S;
+            CNTR_S: if (BinCntr == 12)                      ns = WAIT_S;
+                    else if (rgbRegistered[BinCntr] == 0)   ns = CNTR_S;
+                    else                                    ns = LOAD_S;
+            LOAD_S: if (&SerialCntr)                        ns = CNTR_S;
+            default:                                        ns = WAIT_S;
+        endcase
+    end
+
+    // state logic
+    always_ff @(posedge clk) begin
+        if (rst) begin
+            WaitCntr <= '0;
+            BinCntr <= '0;
+            SerialCntr <= '0;
+        end
+        else begin
+
+            data_v <= '0;
+
+            case (ns)
+                WAIT_S: begin
+                    WaitCntr <= WaitCntr + 1;
+                    rgbRegistered <= rgb;
+                    LEDCountsRegistered <= LEDCounts;
+                    BinCntr <= 0;
+                end
+                CNTR_S: begin
+                    WaitCntr <= '0;
+                    Color <= rgbRegistered[BinCntr];
+                    LEDCountsRegistered[BinCntr] <= LEDCountsRegistered[BinCntr] - 1;
+                    if (LEDCountsRegistered[BinCntr] == 0) BinCntr <= BinCntr + 1;
+                    SerialCntr <= 23;
+                end
+                LOAD_S: begin
+                    data_v <= '1;
+                    dOut <= Color[SerialCntr];
+                    SerialCntr <= SerialCntr - 1;
+                end
+            endcase 
+        end
+    end
+
+    assign clkOut = data_v & ~clk;
+    assign done = ps == WAIT_S;
+
+endmodule
+
+module LEDDriver2_testbench();
+
+    parameter LEDS  = 50;
+    parameter FREQ  = 12_500_000;
+    parameter BIN_QTY = 12;
+    localparam TB_FREQ = 12_500_000;
+    localparam TB_PERIOD =  80ps;
+
+    logic dOut, clkOut;              // outputs to LED
+    logic done;                      // comms output to visualizer
+    logic [BIN_QTY - 1 : 0][23 : 0] rgb;
+    logic [BIN_QTY - 1 : 0][$clog2(LEDS) - 1 : 0] LEDCounts;
+    logic start;                     // comms input from visualizer
+    logic clk, rst;                  // standard inputs
+
+    // clock setup
+    initial begin
+        clk = '0;
+        forever #(TB_PERIOD/2) clk = ~clk;
+    end
+
+    // DUT
+    LEDDriver2 #(
+        .LEDS(LEDS), 
+        .FREQ(TB_FREQ)
+    ) dut (
+        .dOut    (dOut   ),
+        .clkOut  (clkOut ),
+        .done    (done   ),
+        .rgb     (rgb    ),
+        .LEDCounts(LEDCounts),
+        .start   (start  ),
+        .clk     (clk    ),
+        .rst     (rst    )
+    );
+
+    initial begin
+        rst = '1; repeat(10) @(posedge clk);
+        rst = '0;
+        start = 1;
+
+        rgb = {'0,24'hAAAAAA, 24'hF0F0F0F0, 24'hFFFFFF};
+        LEDCounts = {'0, 6'd20, 6'd20, 6'd10};
+
+        wait(!done);
+        wait(done);
+
+        $stop();
+    end
 
 endmodule
 
