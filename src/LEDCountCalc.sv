@@ -10,36 +10,35 @@ module LEDCountCalc #(
 
     input logic [BIN_QTY - 1 : 0][W + D - 1 : 0] noteAmplitudes_i,
     input logic [W + D - 1 + $clog2(BIN_QTY): 0] amplitudeSumNew_i,
-    input logic clk, rst
+    input logic start, clk, rst
 );
 
-    logic [1:0] cycle_cntr;
+    logic [1:0] valid_delay;
     logic [W + D - 1 + $clog2(BIN_QTY) - $clog2(LEDS) : 0] thresholdAmplitude, thresholdAmplitude_d1;
 
     integer i;
 
     always_comb begin
+        // cycle 1
         thresholdAmplitude = amplitudeSumNew_i / LEDS;
 
+        // cycle 2
         for (i = 0; i < BIN_QTY; i++) begin
             LEDCount[i] = noteAmplitudes_i[i] / thresholdAmplitude_d1;
         end
 
-        data_v = cycle_cntr;
+        data_v = valid_delay[1];
 
-        //if (data_v & !rst) begin
-        //    $display("%20s : %10d : %16h", "amplitudeSumNew_i", amplitudeSumNew_i, amplitudeSumNew_i);
-        //    $display("%20s : %10d : %16h", "thresholdAmplitude", thresholdAmplitude, thresholdAmplitude);
-        //end
     end
 
     always_ff @(posedge clk) begin
         if (rst) begin 
-            cycle_cntr <= '1;
+            valid_delay = '0;
         end
         else begin
             thresholdAmplitude_d1 <= thresholdAmplitude;
-            cycle_cntr <= cycle_cntr + 1;
+            
+            valid_delay <= {valid_delay[0], start};
         end
         
     end
@@ -61,7 +60,7 @@ module LEDCountCalc_testbench ();
     logic data_v;
     logic [BIN_QTY - 1 : 0][W + D - 1 : 0] noteAmplitudes_i;
     logic [W + D - 1 + $clog2(BIN_QTY): 0] amplitudeSumNew_i;
-    logic clk, rst;
+    logic start, clk, rst;
 
     // clock setup
     initial begin
@@ -80,6 +79,7 @@ module LEDCountCalc_testbench ();
         .data_v             (data_v             ),
         .noteAmplitudes_i   (noteAmplitudes_i   ),
         .amplitudeSumNew_i  (amplitudeSumNew_i  ),
+        .start              (start              ),
         .clk                (clk                ),
         .rst                (rst                )
     );
@@ -106,14 +106,14 @@ module LEDCountCalc_testbench ();
 
     task run();
         begin
-           wait(data_v);
-           test_input(); 
-           repeat(2) @(posedge clk);
-           wait(data_v);
+            start = '1;
+            test_input(); 
+            repeat(2) @(posedge clk);
+            wait(data_v);
 
-           for (i = 0; i < BIN_QTY - 1; i++) begin
-               $display("LEDCount[%2d] : %2d", i, LEDCount[i]);
-           end
+            for (i = 0; i < BIN_QTY - 1; i++) begin
+                $display("LEDCount[%2d] : %2d", i, LEDCount[i]);
+            end
         end
     endtask 
 

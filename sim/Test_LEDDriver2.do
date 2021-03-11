@@ -2,7 +2,7 @@
 vlib work
 
 # Source and Testbench files
-vlog -work work "../src/LEDDriver.sv"
+vlog -work work "../src/LEDDriver2.sv"
 
 # Call simulator
 vsim -voptargs="+acc" -t 1ps -lib work LEDDriver2_testbench

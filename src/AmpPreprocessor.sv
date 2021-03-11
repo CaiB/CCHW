@@ -11,13 +11,14 @@ module AmpPreprocessor #(
     output logic data_v,
 
     input logic [BIN_QTY - 1 : 0][W + D - 1 : 0] noteAmplitudes_i,
-    input logic clk, rst
+    input logic start, clk, rst
 );
     localparam WIDTH = W + D - 1;
 
     integer i, j, k;
 
-    logic [1:0] cycle_cntr;
+    // propogates the start signal
+    logic [3:0] valid_delay;
     
     logic [WIDTH + $clog2(BIN_QTY) : 0] amplitudeSum, amplitudeSum_d1;
     
@@ -55,8 +56,8 @@ module AmpPreprocessor #(
             amplitudeSumNew += noteAmplitudesReduced[k];
         end
 
-        // assumes synchronous reciever
-        data_v = &cycle_cntr;
+        data_v = valid_delay[3];
+        
         noteAmplitudes_o = noteAmplitudesReduced;
         noteAmplitudesFast_o = noteAmplitudesFast;
         amplitudeSumNew_o = amplitudeSumNew;
@@ -65,12 +66,13 @@ module AmpPreprocessor #(
     // pass signals between each cycle stage
     always_ff @(posedge clk) begin
         if (rst) begin
-            cycle_cntr <= '1;
+            valid_delay <= '0;
         end 
         else begin
             amplitudeSum_d1 <= amplitudeSum;
             threshold_d1    <= threshold;
-            cycle_cntr      <= cycle_cntr + 1;
+
+            valid_delay <= {valid_delay[2:0], start};
         end
     end
 
@@ -88,6 +90,7 @@ module AmpPreprocessor_testbench();
     logic [W + D - 1 + $clog2(BIN_QTY): 0] amplitudeSumNew_o;
     logic data_v;
     logic [BIN_QTY - 1 : 0][W + D - 1 : 0] noteAmplitudes_i;
+    logic start;
     logic clk;
     logic rst;
 
@@ -108,6 +111,7 @@ module AmpPreprocessor_testbench();
         .amplitudeSumNew_o      (amplitudeSumNew_o      ),
         .data_v                 (data_v                 ),
         .noteAmplitudes_i       (noteAmplitudes_i       ),
+        .start                  (start                  ),
         .clk                    (clk                    ),
         .rst                    (rst                    )
     );
@@ -134,6 +138,8 @@ module AmpPreprocessor_testbench();
 
     task run();
         begin
+            start = '1;
+
            test_input(); 
            repeat(2) @(posedge clk);
            wait(data_v);

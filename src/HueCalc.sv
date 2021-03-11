@@ -10,12 +10,13 @@ module HueCalc #(
     output logic data_v,
 
     input logic [D - 1 : 0] notePosition_i,
-    input logic clk, rst
+    input logic start, clk, rst
 );
 
     parameter W = $clog2(BinsPerOctave);
 
-    logic [1:0] cycle_cntr;
+    // propogates the start signal
+    logic [3:0] valid_delay;
 
     logic [2:0] comparator, comparator_d1, comparator_d2, comparator_d3;
     logic [W + D - 1 : 0] note, note_d1;
@@ -45,21 +46,12 @@ module HueCalc #(
         noteHue_o = noteRectified;
         
 
-        data_v = &cycle_cntr;
-
-        // for testing purposes
-        //if (data_v & !rst) begin
-        //    $display("note = %d", note);
-        //    $display("noteSub = %d", noteSub);
-        //    $display("noteMult = %d", noteMult);
-        //    $display("noteRectified = %d", noteRectified);
-        //    $display("noteHue_o = %d", noteHue_o);
-        //end
+        data_v = valid_delay[3];
     end
 
     always_ff @(posedge clk) begin
         if (rst) begin
-            cycle_cntr <= '1;
+           valid_delay <= '0;
         end
         else begin
             comparator_d1 <= comparator;
@@ -71,7 +63,7 @@ module HueCalc #(
             // bit range max is the concatenation of the bit range maximums of each signal multiplied and 9 less than that
             noteMult_d1 <= noteMult[5 + D + W + D - 1 : 5 + D + W + D - 10]; // take the top 10 bits of the result
 
-            cycle_cntr <= cycle_cntr + 1;
+            valid_delay <= {valid_delay[2:0], start};
         end
     end
 
@@ -90,7 +82,7 @@ module HueCalc_testbench();
     logic data_v;
 
     logic [D - 1 : 0] notePosition_i;
-    logic clk, rst;
+    logic start, clk, rst;
 
     // clock setup
     initial begin
@@ -108,6 +100,7 @@ module HueCalc_testbench();
         .noteHue_o      (noteHue_o      ),
         .data_v         (data_v         ),
         .notePosition_i (notePosition_i ),
+        .start          (start          ),
         .clk            (clk            ),
         .rst            (rst            )
     );
@@ -115,6 +108,8 @@ module HueCalc_testbench();
     initial begin
         rst = 1; repeat(5) @(posedge clk);
         rst = 0;
+
+        start = '1;
 
         notePosition_i = 10'b0110001000;
 
