@@ -4,7 +4,7 @@
 module DFT
 #(parameter BPO = 24, parameter OC = 5, parameter N = 16, parameter TOPSIZE = 8192, parameter ND = (N*2)+(OC-1))
 (
-    output logic unsigned [ND-1:0] outBins [0:(BPO*OC)-1],
+    output logic unsigned [ND-1:0] outBins [0:(BPO*OC)-1], // the magnitudes in each frequency bin
     output logic doingRead, // on while we are doing a read on the input, useful for FPGA
     input logic signed [N-1:0] inputSample, // New audio data to add
     input logic sampleReady, // Whether to new audio data is ready
@@ -22,7 +22,7 @@ module DFT
     OctaveSelector #(.OCT(OC)) OctSel(.enableOctaves(EnableOctaves), .incr(AdvanceOctave), .clk, .rst);
 
     // Sin and cos tables
-    localparam NS = 6; // trig table adddress width, set by script
+    localparam NS = 6; // trig table adddress width, specified by GenerateTables.ps1
     logic signed [N-1:0] SinOutput, CosOutput;
     logic [NS-1:0] TrigTablePositions [0:OC-1];
     SinTables #(.N(N), .BINS(BPO), .NS(NS)) SinTab(.value(SinOutput), .bin(CurrentOctaveBinIndex), .position(TrigTablePositions[ActiveOctave]));
@@ -75,7 +75,7 @@ module OctaveManager
     assign trigPosReq = mathOp ? CurrentTrigTablePos : EndTrigTablePos;
 
     logic signed [N-1:0] sample0, sample1, oldestSample;
-    OctaveStorage #(.SIZE(SIZE), .N(N)) OctaveData(.sample0, .sample1, .oldestSample, .newSample, .writeSample(readSample), .clk, .rst);
+    OctaveStorageRAM #(.SIZE(SIZE), .N(N)) OctaveData(.sample0, .sample1, .oldestSample, .newSample, .writeSample(readSample), .clk, .rst);
     assign nextOctave = sample0 + sample1;
 
     logic signed [N-1:0] SampleOperand; // Whatever sample we are currently operating on
@@ -192,10 +192,13 @@ module OctaveSelector
             Previous <= '1;
             Present <= '0;
         end
-        else if(incr)
+        else
         begin
-            Previous <= Present;
-            Present <= Present + 1'd1;
+            if(incr)
+            begin
+                Previous <= Present;
+                Present <= Present + 1'd1;
+            end
         end
     end
 
@@ -205,7 +208,7 @@ endmodule
 
 // A chain of SIZE, N-bit registers, with the outputs of the first, second, and last registers exposed
 // `writeSample` must be true to enable writing
-// TODO: Convert to RAM/DFF hybrid to reduce resource usage
+// NOTE: This uses a ton of individual registers as storage, and while simple, is neither space nor power-efficient. Good only for testing.
 module OctaveStorage
 #(parameter SIZE = 8192, parameter N = 16)
 (
@@ -232,6 +235,91 @@ module OctaveStorage
         sample0 = Inter[0];
         sample1 = Inter[1];
     end
+endmodule
+
+// This is preferred over OctaveStorage when actually used in the FPGA or ASIC. Uses RAM modules designed for the respective device types.
+// However, this is limited to only using the TOPSIZE = 8192 option and TOPN = 16, unless other RAM modules are created.
+module OctaveStorageRAM
+#(parameter SIZE = 8192, parameter N = 16) // N must match size of RAM, which is determined by SIZE.
+(
+    output logic signed [N-1:0] sample0, sample1, oldestSample,
+    input logic signed [N-1:0] newSample,
+    input logic writeSample,
+    input logic clk, rst
+);
+    SampleRegister #(.N(N)) Reg0(.out(sample0), .in(newSample), .en(writeSample), .clk, .rst);
+    SampleRegister #(.N(N)) Reg1(.out(sample1), .in(sample0), .en(writeSample), .clk, .rst);
+
+    typedef enum { WAIT, OUTPUT, WRITE, INCR, XXX } OctStorageState;
+    OctStorageState Present, Next;
+
+    logic [$clog2(SIZE)-1:0] Address;
+    logic DataValid, Filled; // Filled indicates we;re about to complete the first write pass. DataValid becomes true once we are ready to read back at address 0.
+    logic [N-1:0] RAMOut, RAMIn, OldRegOut;
+    logic RAMWrite;
+    assign RAMIn = sample0; //newSample;
+
+    SampleRegister #(.N(N)) RegEnd(.out(OldRegOut), .in(RAMOut), .en(writeSample), .clk, .rst);
+
+    always_ff @(posedge clk) // State register
+        if(rst) Present <= WAIT;
+        else Present <= Next;
+    
+    always_comb // Next state
+    begin
+        Next = XXX;
+        case(Present)
+            WAIT: if(writeSample) Next = OUTPUT;
+                  else Next = WAIT; // @LB
+            OUTPUT: Next = WRITE;
+            WRITE: Next = INCR;
+            INCR: Next = WAIT;
+            default: Next = XXX;
+        endcase
+    end
+
+    always_ff @(posedge clk) // Registered outputs
+    begin
+        if(rst)
+        begin
+            Address <= '0;
+            Filled <= '0;
+            DataValid <= '0;
+        end
+        else
+        begin
+            if(Present == INCR) Address <= Address + 1'b1;
+            if(Address == (SIZE-1)) Filled <= '1;
+            if(Filled && (Address == 0) && writeSample) DataValid <= '1;
+        end
+    end
+
+    always_comb // Combinational outputs
+    begin
+        RAMWrite = (Present == WRITE);
+        oldestSample = DataValid ? OldRegOut : '0;
+    end
+
+    generate // RAM module
+`ifdef RAM_ASIC
+        if(SIZE == 8192) RAM_16B_8192_AR4_LP RAM(.Q(RAMOut), .CLK(clk), .CEN('0), .WEN(~RAMWrite), .A(Address), .D(RAMIn), .EMA('0), .EMAW('0), .EMAS('0), .RET1N('1));
+        else if(SIZE == 4096) RAM_17B_4096_AR4_LP RAM(.Q(RAMOut), .CLK(clk), .CEN('0), .WEN(~RAMWrite), .A(Address), .D(RAMIn), .EMA('0), .EMAW('0), .EMAS('0), .RET1N('1));
+        else if(SIZE == 2048) RAM_18B_2048_AR3_LP RAM(.Q(RAMOut), .CLK(clk), .CEN('0), .WEN(~RAMWrite), .A(Address), .D(RAMIn), .EMA('0), .EMAW('0), .EMAS('0), .RET1N('1));
+        else if(SIZE == 1024) RAM_19B_1024_AR3_LP RAM(.Q(RAMOut), .CLK(clk), .CEN('0), .WEN(~RAMWrite), .A(Address), .D(RAMIn), .EMA('0), .EMAW('0), .EMAS('0), .RET1N('1));
+        else if(SIZE == 512) RAM_20B_512_AR2_LP RAM(.Q(RAMOut), .CLK(clk), .CEN('0), .WEN(~RAMWrite), .A(Address), .D(RAMIn), .EMA('0), .EMAW('0), .EMAS('0), .RET1N('1));
+        //else $display("MEMORY SIZE %4d INVALID", SIZE);
+`elsif RAM_FPGA
+        `timescale 1 ps / 1 ps
+        if(SIZE == 8192) RAM_8192 DUT(.address(Address), .clock(clk), .data(RAMIn), .wren(RAMWrite), .q(RAMOut));
+        else if(SIZE == 4096) RAM_4096 DUT(.address(Address), .clock(clk), .data(RAMIn), .wren(RAMWrite), .q(RAMOut));
+        else if(SIZE == 2048) RAM_2048 DUT(.address(Address), .clock(clk), .data(RAMIn), .wren(RAMWrite), .q(RAMOut));
+        else if(SIZE == 1024) RAM_1024 DUT(.address(Address), .clock(clk), .data(RAMIn), .wren(RAMWrite), .q(RAMOut));
+        else if(SIZE == 512) RAM_512 DUT(.address(Address), .clock(clk), .data(RAMIn), .wren(RAMWrite), .q(RAMOut));
+        //else $display("MEMORY SIZE %4d INVALID", SIZE);
+`else
+        $error("ERROR: MEMORY TYPE NOT SELECTED VIA DEFINE!");
+`endif
+    endgenerate
 endmodule
 
 // An N-bit enabled register

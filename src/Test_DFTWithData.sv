@@ -1,19 +1,22 @@
 // WARNING: THIS FILE WILL BE OVERWRITTEN BY A SCRIPT. SAVE ANY CHANGES ELSEWHERE!
+`timescale 1 ps / 1 ps
 module Test_DFT;
     localparam BINCOUNT = 120;
-    localparam LEN = 1080;
+    localparam LEN = 10000;
 
     logic unsigned [35:0] outBins [0:BINCOUNT-1];
     logic signed [15:0] inputSample;
     logic sampleReady;
     logic clk, rst;
 
-    DFT #(.BPO(24), .OC(5), .N(16), .TOPSIZE(1024)) DFTDUT(.outBins, .inputSample, .sampleReady, .clk, .rst);
+    DFT #(.BPO(24), .OC(5), .N(16), .TOPSIZE(8192)) DFTDUT(.outBins, .inputSample, .sampleReady, .clk, .rst);
 
     logic signed [15:0] InputData [0:LEN-1];
     initial $readmemh("../other/dfttestdata.txt", InputData);
     logic unsigned [31:0] ExpectedOutputs [0:BINCOUNT-1];
-    assign ExpectedOutputs = { 32'd42215279, 32'd49864214, 32'd57932760, 32'd66387850, 32'd75184071, 32'd84262103, 32'd93547207, 32'd102947816, 32'd112354347, 32'd121638313, 32'd130651893, 32'd139228090, 32'd147181654, 32'd154310961, 32'd160401018, 32'd165227798, 32'd168564068, 32'd170186848, 32'd169886558, 32'd167477862, 32'd162812044, 32'd155790637, 32'd146379791, 32'd134624681, 32'd120662945, 32'd104735946, 32'd87196357, 32'd68510437, 32'd49253361, 32'd30096739, 32'd11797563, 32'd5077028, 32'd19338742, 32'd30602414, 32'd38240129, 32'd41881136, 32'd41417773, 32'd37052143, 32'd29323499, 32'd19107431, 32'd7614999, 32'd4393624, 32'd14384719, 32'd21841708, 32'd25632942, 32'd25243386, 32'd20793111, 32'd13102447, 32'd3915628, 32'd6699146, 32'd14277765, 32'd18446378, 32'd18148933, 32'd13472434, 32'd5885596, 32'd4841431, 32'd11852942, 32'd15436454, 32'd13871573, 32'd7626883, 32'd4370532, 32'd12177434, 32'd16524972, 32'd13711401, 32'd4193027, 32'd12839231, 32'd25547494, 32'd27125459, 32'd9460540, 32'd30903929, 32'd86265082, 32'd139791637, 32'd168578419, 32'd155036402, 32'd99213213, 32'd24055988, 32'd33864007, 32'd46629329, 32'd16570534, 32'd22685593, 32'd32799006, 32'd6252118, 32'd24800944, 32'd22800093, 32'd9175515, 32'd27207637, 32'd4503581, 32'd25851509, 32'd13465302, 32'd24541598, 32'd19377662, 32'd27791996, 32'd24095685, 32'd43389941, 32'd28661957, 32'd130060857, 32'd230490465, 32'd114744225, 32'd33044432, 32'd19552121, 32'd25951943, 32'd7869221, 32'd9995611, 32'd13553721, 32'd7351803, 32'd3409531, 32'd7427246, 32'd7875136, 32'd5653291, 32'd3232759, 32'd2970597, 32'd3895589, 32'd4446248, 32'd4540660, 32'd4387031, 32'd4152726, 32'd3916680, 32'd3684280, 32'd3411210, 32'd3033965 };
+    assign ExpectedOutputs = { 32'd35225330, 32'd18585585, 32'd19543775, 32'd35790140, 32'd12261271, 32'd28438522, 32'd32000447, 32'd9805364, 32'd37674233, 32'd12383519, 32'd34126341, 32'd24231791, 32'd28782225, 32'd30429267, 32'd26615567, 32'd31937749, 32'd29894902, 32'd28158295, 32'd38357234, 32'd15693845, 32'd46752497, 32'd12998213, 32'd40885144, 32'd44642417, 32'd6359885, 32'd49420374, 32'd52662969, 32'd13753673, 32'd39459673, 32'd69957201, 32'd66454999, 32'd34457501, 32'd14348583, 32'd62510773, 32'd108170505, 32'd153210337, 32'd211623865, 32'd330914397, 32'd871294167, 32'd1111282611, 32'd328248045, 32'd184738886, 32'd114308873, 32'd61258585, 32'd14859518, 32'd26800049, 32'd46486668, 32'd37814946, 32'd8342953, 32'd26485195, 32'd22703339, 32'd12341278, 32'd20867531, 32'd11145697, 32'd15309507, 32'd16238042, 32'd6824736, 32'd13932928, 32'd18153942, 32'd15629767, 32'd10290520, 32'd5833205, 32'd4047158, 32'd4412715, 32'd10675893, 32'd25369855, 32'd44276228, 32'd47752439, 32'd5303437, 32'd132523309, 32'd166855690, 32'd343282355, 32'd10198500, 32'd59860533, 32'd54458946, 32'd36321674, 32'd25153314, 32'd22236062, 32'd23336943, 32'd21196667, 32'd7798189, 32'd12792948, 32'd11678242, 32'd12748865, 32'd2322911, 32'd7516814, 32'd9906465, 32'd9374629, 32'd5804768, 32'd5446996, 32'd13861756, 32'd3312637, 32'd16570089, 32'd21580278, 32'd25967103, 32'd42932194, 32'd83772340, 32'd1573608159, 32'd92754479, 32'd31020332, 32'd9226350, 32'd9536669, 32'd17230450, 32'd12666657, 32'd12027155, 32'd3864707, 32'd2791334, 32'd7050987, 32'd9000435, 32'd5739419, 32'd2045075, 32'd2762221, 32'd6736494, 32'd2383197, 32'd5303013, 32'd4603413, 32'd1591861, 32'd5142471, 32'd5169886, 32'd4671919 };
+
+    integer FileHandle;
 
     initial
     begin
@@ -25,11 +28,12 @@ module Test_DFT;
         rst = '1;
         inputSample = '0;
         sampleReady = '0;
-        repeat(3) @(posedge clk);
+        @(posedge clk);
         rst = '0;
         @(posedge clk);
     endtask
 
+    string FileLine = "";
     task InsertData(int samples);
         for(int i = 0; i < samples; i++)
         begin
@@ -38,7 +42,11 @@ module Test_DFT;
             @(posedge clk);
             sampleReady = '0;
             repeat(250) @(posedge clk);
-            $display("Sample %4d finished", i);
+            if(i < 20 || i % 10 == 0) $display("Sample %4d finished", i);
+
+            for(int j = 0; j < BINCOUNT; j++) FileLine = $sformatf("%s%0d,", FileLine, outBins[j]);
+            $fwrite(FileHandle, "%s\n", FileLine);
+            FileLine = "";
         end
     endtask
 
@@ -46,7 +54,7 @@ module Test_DFT;
         $display("Raw Data:");
         for(int i = 0; i < 120; i++) $display("%d,%d", ExpectedOutputs[i], outBins[i]);
 
-        $display("Comparisons:");
+        /*$display("Comparisons:");
         for(int i = 0; i < 120; i++)
         begin
             real min, max;
@@ -54,14 +62,18 @@ module Test_DFT;
             max = real'(ExpectedOutputs[i]) * 1.1;
             assert(outBins[i] > min) else $display("Bin %d had too low value %d, expected %d.", i, outBins[i], ExpectedOutputs[i]);
             assert(outBins[i] < max) else $display("Bin %d had too high value %d, expected %d.", i, outBins[i], ExpectedOutputs[i]);
-        end
+        end*/
     endtask
 
     initial
     begin
+        FileHandle = $fopen("dftoutput.csv", "w");
+
         Reset();
         InsertData(LEN);
         CheckOutputs();
+
+        $fclose(FileHandle);
         $stop;
     end
 endmodule

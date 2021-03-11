@@ -216,3 +216,121 @@ module Test_OctaveStorage;
         $stop();
     end
 endmodule
+
+`timescale 1 ps / 1 ps
+module Test_OctaveStorageRAM;
+    logic signed [19:0] sample0, sample1, oldestSample;
+    logic signed [19:0] newSample;
+    logic writeSample;
+    logic clk, rst;
+    
+    OctaveStorageRAM #(.N(20), .SIZE(512)) DUT (.sample0, .sample1, .oldestSample, .newSample, .writeSample, .clk, .rst);
+
+    initial
+    begin
+        clk <= '1;
+        forever #100 clk <= ~clk;
+    end
+
+    task Reset;
+        newSample = '0;
+        writeSample = '0;
+
+        rst = '1;
+        repeat(5) @(posedge clk);
+        rst = '0; @(posedge clk);
+    endtask
+
+    task Write(logic [19:0] data);
+        writeSample = '1;
+        newSample = data;
+        @(posedge clk);
+        #10;
+        writeSample = '0;
+    endtask
+
+    int i;
+    initial
+    begin
+        Reset();
+        repeat(3) @(posedge clk);
+        #10;
+
+        Write(20'h75000);
+
+        // subtracting bin 0 happens here, oldestSample must be valid.
+        assert(DUT.Address == '0);
+        assert(DUT.RAMWrite == '0);
+        assert(oldestSample == '0);
+        assert(DUT.DataValid == '0);
+        @(posedge clk);
+        #10;
+
+        // subtracting bin 1 is happening now
+        // new data should be being written to the RAM, replacing the previous data.
+        assert(DUT.Address == '0);
+        assert(DUT.RAMWrite == '1);
+        assert(oldestSample == '0);
+        assert(DUT.DataValid == '0);
+        assert(sample0 == 20'h75000);
+        @(posedge clk);
+        #10;
+
+        // subtracting bin 2 now
+        // new data should be in RAM, but outputs should still be steady.
+        assert(DUT.Address == '0);
+        assert(DUT.RAMWrite == '0);
+        assert(oldestSample == '0);
+        assert(DUT.DataValid == '0);
+        assert(sample0 == 20'h75000);
+        @(posedge clk);
+        #10;
+
+        // subtracting bin 3 now
+        // we should now return to the idle state, and address should have incremented
+        assert(DUT.Address == 1);
+        assert(DUT.RAMWrite == '0);
+        assert(oldestSample == '0);
+        assert(DUT.DataValid == '0);
+        assert(sample0 == 20'h75000);
+        @(posedge clk);
+        #10;
+
+        repeat(5) @(posedge clk); // pretend to wait for this sample to finish processing
+
+        // process until the RAM is theoretically full
+        for(i = 1; i < 512; i++)
+        begin
+            Write(20'h75000 + i);
+            repeat(5) @(posedge clk);
+            #10;
+        end
+
+        Write(20'h775200);
+
+        // we should now see the first ever sample on the output, and from now on we will read and write RAM.
+        assert(DUT.Address == 0);
+        assert(oldestSample == 20'h75000);
+        assert(DUT.DataValid == '1);
+        repeat(5) @(posedge clk);
+        #10;
+        
+        Write(20'h75201);
+
+        assert(DUT.Address == 1);
+        assert(oldestSample == 20'h75001);
+        assert(DUT.DataValid == '1);
+        repeat(5) @(posedge clk);
+        #10;
+
+        Write(20'h75202);
+
+        assert(DUT.Address == 2);
+        assert(oldestSample == 20'h75002);
+        assert(DUT.DataValid == '1);
+        repeat(5) @(posedge clk);
+        
+        #1000;
+        $stop;
+    end
+endmodule

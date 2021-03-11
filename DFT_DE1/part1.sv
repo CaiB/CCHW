@@ -28,7 +28,9 @@ module part1 (
 	AUD_BCLK, 
 	AUD_ADCDAT, 
 	AUD_DACDAT,
-	LEDR
+	LEDR,
+	SW,
+	HEX0, HEX1, HEX2, HEX3, HEX4, HEX5
 );
 
 	input CLOCK_50, CLOCK2_50;
@@ -40,6 +42,8 @@ module part1 (
 	input AUD_ADCDAT;
 	output AUD_DACDAT;
 	output [9:0] LEDR;
+	input [9:0] SW;
+	output [6:0] HEX0, HEX1, HEX2, HEX3, HEX4, HEX5;
 	
 	wire read_ready, write_ready, read, write;
 	wire [23:0] readdata_left, readdata_right;
@@ -50,7 +54,7 @@ module part1 (
 	parameter BPO = 24;
 	parameter OC = 5;
 	parameter N = 16;
-	parameter TOPSIZE = 1024;
+	parameter TOPSIZE = 8192;
 	parameter ND = (N*2)+(OC-1);
 
 	logic signed [24:0] rawInput;
@@ -61,13 +65,47 @@ module part1 (
 	logic unsigned [ND-1:0] outBins [0:(BPO*OC)-1];
 	DFT #(.BPO(BPO), .OC(OC), .N(N), .TOPSIZE(TOPSIZE), .ND(ND)) TheDFT(.outBins, .inputSample, .sampleReady(read_ready), .doingRead(read), .clk(CLOCK_50), .rst(reset));
 
+	logic NFPeaks [0:11];
+	logic unsigned [N-1:0] BinsSmall [0:(BPO*OC)-1];
+	logic NFStart;
+	logic [9:0] SyncedSwitches;
+	NoteFinder #(.BPO(BPO), .OCT(OC), .N(N)) TheNoteFinder(.peaksOut(NFPeaks), .dftBins(BinsSmall), .minThreshold(SyncedSwitches), .startCycle(NFStart), .clk(CLOCK_50), .rst(reset));
+
+	// Visual outputs
+	logic [9:0] InputAbsTrim;
+	always_comb
+	begin
+		if(rawInput[23]) InputAbsTrim = -rawInput[23:14];
+		else InputAbsTrim = rawInput[23:14];
+		LEDR = { InputAbsTrim[0], InputAbsTrim[1], InputAbsTrim[2], InputAbsTrim[3], InputAbsTrim[4], InputAbsTrim[5], InputAbsTrim[6], InputAbsTrim[7], InputAbsTrim[8], InputAbsTrim[9] };
+		HEX0 = {1'b1, {2{~NFPeaks[10]}}, 1'b1, {2{~NFPeaks[11]}}, 1'b1};
+		HEX1 = {1'b1, {2{~NFPeaks[8]}}, 1'b1, {2{~NFPeaks[9]}}, 1'b1};
+		HEX2 = {1'b1, {2{~NFPeaks[6]}}, 1'b1, {2{~NFPeaks[7]}}, 1'b1};
+		HEX3 = {1'b1, {2{~NFPeaks[4]}}, 1'b1, {2{~NFPeaks[5]}}, 1'b1};
+		HEX4 = {1'b1, {2{~NFPeaks[2]}}, 1'b1, {2{~NFPeaks[3]}}, 1'b1};
+		HEX5 = {1'b1, {2{~NFPeaks[0]}}, 1'b1, {2{~NFPeaks[1]}}, 1'b1};
+	end
+
 	genvar i;
 	generate
-		for(i = 48; i < 58; i++)
-		begin : MakeLEDs
-			assign LEDR[57 - i] = (outBins[i][28] | outBins[i][29] | outBins[i][30] | outBins[i][31]);
+		// Small bins
+		for(i = 0; i < (BPO*OC); i++)
+		begin : MakeSmallBins
+			assign BinsSmall[i] = outBins[i][(ND-1):(ND-N)];
+		end
+
+		for(i = 0; i < 10; i++)
+		begin : MakeSWSyncs
+			Synchronizer SWSync(.out(SyncedSwitches[i]), .in(SW[i]), .clk(CLOCK_50), .rst(reset));
 		end
 	endgenerate
+
+	logic [3:0] DelayLine;
+	always_ff @(posedge CLOCK_50)
+		if(reset) DelayLine <= '0;
+		else DelayLine <= (DelayLine << 1) | read;
+	
+	assign NFStart = DelayLine[3];
 	/* End custom code */
 	
 	clock_generator my_clock_gen(

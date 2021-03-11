@@ -4,7 +4,7 @@ $StartFreq = 880;
 $SampleRate = 48000;
 $BinCount = 24;
 $MagMultiplier = 1024;
-$TopOctaveLen = 1024;
+$TopOctaveLen = 8192;
 $Octaves = 5;
 
 if(Test-Path $CosFile) { Remove-Item $CosFile; }
@@ -52,7 +52,7 @@ for($Octave = 0; $Octave -LT $Octaves; $Octave++)
     $SubStarts = "";
     for($Bin = 0; $Bin -LT $BinCount; $Bin++)
     {
-        $Pos = $WaveLengths[$Bin] - (($TopOctaveLen - 1) % $WaveLengths[$Bin]);
+        $Pos = $WaveLengths[$Bin] - (($TopOctaveLen - 1) % $WaveLengths[$Bin]) - 1; # This -1 is used for RAM, as it technically takes an extra sample cycle for data to come back out.
         $SubStarts += ("{0}'d{1}, " -F $BinBitCount, $Pos);
     }
     $SubStarts = $SubStarts.Substring(0, $SubStarts.Length - 2);
