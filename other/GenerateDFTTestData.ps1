@@ -1,5 +1,5 @@
 $DataFile = 'dfttestdata.txt';
-$TestFile = '../src/Test_DFTWithData.sv';
+$TestFile = '../src/Test_DFT.sv';
 
 # Waves are defined as (Freqency [Hz], Amplitude [0~1], Phase [deg]).
 $Wave1 = @(167.54, 0.3, 0);
