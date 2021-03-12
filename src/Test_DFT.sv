@@ -1,151 +1,22 @@
-module Test_OperationManager;
-    localparam OCT = 5;
-    localparam BINS = 24;
-    
-    logic [$clog2(OCT)-1:0] octave;
-    logic operation; // add / subtract
-    logic [$clog2(BINS)-1:0] bin;
-    logic ready; // asserted while we are ready and waiting for an audio sample
-    logic writeSample; // asserted for 1 cycle before processing to write the sample into each octave
-    logic finishedProcessing; // asserted for 1 clock cycle after the current sample is done being processed
+// WARNING: THIS FILE WILL BE OVERWRITTEN BY A SCRIPT. SAVE ANY CHANGES ELSEWHERE!
+`timescale 1 ps / 1 ps
+module Test_DFT;
+    localparam BINCOUNT = 120;
+    localparam LEN = 10000;
 
+    logic unsigned [35:0] outBins [0:BINCOUNT-1];
+    logic signed [15:0] inputSample;
     logic sampleReady;
     logic clk, rst;
 
-    OperationManager #(.OCT(OCT), .BINS(BINS)) DUT(.*);
+    DFT #(.BPO(24), .OC(5), .N(16), .TOPSIZE(8192)) DFTDUT(.outBins, .inputSample, .sampleReady, .clk, .rst);
 
-    initial
-    begin
-        clk <= '0;
-        forever #100 clk <= ~clk;
-    end
-    
-    task Reset;
-        sampleReady = '0;
-        rst = '1; @(posedge clk);
-        rst = '0; @(posedge clk);
-        assert(~finishedProcessing);
-        assert(~writeSample);
-        assert(ready);
-    endtask
+    logic signed [15:0] InputData [0:LEN-1];
+    initial $readmemh("../other/dfttestdata.txt", InputData);
+    logic unsigned [31:0] ExpectedOutputs [0:BINCOUNT-1];
+    assign ExpectedOutputs = { 32'd35225330, 32'd18585585, 32'd19543775, 32'd35790140, 32'd12261271, 32'd28438522, 32'd32000447, 32'd9805364, 32'd37674233, 32'd12383519, 32'd34126341, 32'd24231791, 32'd28782225, 32'd30429267, 32'd26615567, 32'd31937749, 32'd29894902, 32'd28158295, 32'd38357234, 32'd15693845, 32'd46752497, 32'd12998213, 32'd40885144, 32'd44642417, 32'd6359885, 32'd49420374, 32'd52662969, 32'd13753673, 32'd39459673, 32'd69957201, 32'd66454999, 32'd34457501, 32'd14348583, 32'd62510773, 32'd108170505, 32'd153210337, 32'd211623865, 32'd330914397, 32'd871294167, 32'd1111282611, 32'd328248045, 32'd184738886, 32'd114308873, 32'd61258585, 32'd14859518, 32'd26800049, 32'd46486668, 32'd37814946, 32'd8342953, 32'd26485195, 32'd22703339, 32'd12341278, 32'd20867531, 32'd11145697, 32'd15309507, 32'd16238042, 32'd6824736, 32'd13932928, 32'd18153942, 32'd15629767, 32'd10290520, 32'd5833205, 32'd4047158, 32'd4412715, 32'd10675893, 32'd25369855, 32'd44276228, 32'd47752439, 32'd5303437, 32'd132523309, 32'd166855690, 32'd343282355, 32'd10198500, 32'd59860533, 32'd54458946, 32'd36321674, 32'd25153314, 32'd22236062, 32'd23336943, 32'd21196667, 32'd7798189, 32'd12792948, 32'd11678242, 32'd12748865, 32'd2322911, 32'd7516814, 32'd9906465, 32'd9374629, 32'd5804768, 32'd5446996, 32'd13861756, 32'd3312637, 32'd16570089, 32'd21580278, 32'd25967103, 32'd42932194, 32'd83772340, 32'd1573608159, 32'd92754479, 32'd31020332, 32'd9226350, 32'd9536669, 32'd17230450, 32'd12666657, 32'd12027155, 32'd3864707, 32'd2791334, 32'd7050987, 32'd9000435, 32'd5739419, 32'd2045075, 32'd2762221, 32'd6736494, 32'd2383197, 32'd5303013, 32'd4603413, 32'd1591861, 32'd5142471, 32'd5169886, 32'd4671919 };
 
-    task VerifyBinCounts(logic expectedOp, logic [$clog2(OCT)-1:0] expectedOct);
-        for(int binInd = 0; binInd < BINS; binInd++)
-        begin
-            #5;
-            assert(bin == binInd) else $display("%5t: Expected bin %2d, was %2d", $time, binInd, bin);
-            assert(operation == expectedOp);
-            assert(octave == expectedOct);
-            assert(~writeSample);
-            if(~(binInd == BINS-1 && expectedOp && expectedOct == OCT-1)) @(posedge clk);
-        end
-    endtask
-
-    initial
-    begin
-        Reset();
-        sampleReady = '1; @(posedge clk);
-        sampleReady = '0;
-        #5; assert(writeSample);
-        @(posedge clk);
-        #5; assert(~writeSample);
-
-        for(int octInd = 0; octInd < OCT; octInd++)
-        begin
-            VerifyBinCounts('0, octInd);
-            VerifyBinCounts('1, octInd);
-        end
-        @(posedge clk);
-        #5; assert(finishedProcessing);
-
-        repeat(5) @(posedge clk);
-        assert(bin == '0);
-        assert(~operation);
-
-        // Again, but this time pretend there's multiple samples waiting
-        sampleReady = '1; @(posedge clk);
-        #5; assert(writeSample);
-        @(posedge clk);
-        #5; assert(~writeSample);
-
-        for(int octInd = 0; octInd < OCT; octInd++)
-        begin
-            VerifyBinCounts('0, octInd);
-            VerifyBinCounts('1, octInd);
-        end
-        @(posedge clk);
-        #5; assert(finishedProcessing);
-
-        repeat(5) @(posedge clk);
-        sampleReady = '0;
-        repeat(50) @(posedge clk);
-
-        $stop;
-    end
-
-endmodule
-
-module Test_OctaveSelector;
-    parameter OCT = 4;
-    logic [OCT-1:0] enableOctaves;
-    logic incr, clk, rst;
-
-    OctaveSelector #(.OCT(OCT)) DUT(.enableOctaves, .incr, .clk, .rst);
-
-    initial
-    begin
-        clk <= '0;
-        forever #100 clk <= ~clk;
-    end
-
-    task Reset;
-        incr = '0;
-        rst = '1; @(posedge clk);
-        rst = '0; @(posedge clk);
-    endtask
-
-    task Check(logic [OCT-1:0] expected);
-        #5;
-        $write("%4t Expected %b, got %b", $time, expected, enableOctaves);
-        assert(enableOctaves == expected) else $display(" - WRONG");
-        $display("");
-        @(posedge clk);
-    endtask
-
-    initial
-    begin
-        Reset();
-        Check(4'b1111);
-        Check(4'b1111);
-        #50; incr = '1;
-        Check(4'b1111);
-        Check(4'b0001);
-        Check(4'b0011);
-        Check(4'b0001);
-        Check(4'b0111);
-        Check(4'b0001);
-        Check(4'b0011);
-        Check(4'b0001);
-        Check(4'b1111);
-        Check(4'b0001);
-        Check(4'b0011);
-        Check(4'b0001);
-        #50; incr = '0;
-        Check(4'b0111);
-        Check(4'b0111);
-        Check(4'b0111);
-        Check(4'b0111);
-        $stop;
-    end
-endmodule
-
-module Test_OctaveStorage;
-    logic signed [15:0] sample0, sample1, oldestSample;
-    logic signed [15:0] newSample;
-    logic writeSample;
-    logic clk, rst;
-    
-    OctaveStorage #(.N(16), .SIZE(8)) DUT (.sample0, .sample1, .oldestSample, .newSample, .writeSample, .clk, .rst);
+    integer FileHandle;
 
     initial
     begin
@@ -155,182 +26,54 @@ module Test_OctaveStorage;
 
     task Reset;
         rst = '1;
-        newSample = '0;
-        writeSample = '0;
-
+        inputSample = '0;
+        sampleReady = '0;
         @(posedge clk);
         rst = '0;
         @(posedge clk);
     endtask
 
-    task Insert(logic signed [15:0] toAdd);
-        newSample = toAdd;
-        writeSample = '1;
-        @(posedge clk);
-        writeSample = '0;
-    endtask
-
-    task Verify(logic signed [15:0] expected0, logic signed [15:0] expected1, logic signed [15:0] expectedOld);
-        assert(sample0 == expected0);
-        assert(sample1 == expected1);
-        assert(oldestSample == expectedOld);
-    endtask
-
-    initial
-    begin
-        Reset();
-        Verify(16'd0, 16'd0, 16'd0);
-        
-        Insert(16'd100);
-        Insert(16'd222);
-
-        Verify(16'd100, 16'd0, 16'd0);
-
-        Insert(-16'd333);
-        Verify(16'd222, 16'd100, 16'd0);
-
-        Insert(16'd444); // 100 in slot 2
-        Verify(-16'd333, 16'd222, 16'd0);
-
-        Insert(16'd555); // 100 in slot 3
-        Insert(16'd666); // 100 in slot 4
-        Insert(16'd777); // 100 in slot 5
-        Insert(16'd888); // 100 in slot 6
-        Insert(16'd9999); // 100 in old
-
-        Verify(16'd888, 16'd777, 16'd100);
-
-        Insert(16'd0);
-        Verify(16'd9999, 16'd888, 16'd222);
-
-        newSample = -16'd1;
-        writeSample = '0; // false write
-
-        @(posedge clk);
-        Verify(16'd0, 16'd9999, -16'd333);
-
-        @(posedge clk);
-        Verify(16'd0, 16'd9999, -16'd333);
-
-        @(posedge clk);
-        $stop();
-    end
-endmodule
-
-`timescale 1 ps / 1 ps
-module Test_OctaveStorageRAM;
-    logic signed [19:0] sample0, sample1, oldestSample;
-    logic signed [19:0] newSample;
-    logic writeSample;
-    logic clk, rst;
-    
-    OctaveStorageRAM #(.N(20), .SIZE(512)) DUT (.sample0, .sample1, .oldestSample, .newSample, .writeSample, .clk, .rst);
-
-    initial
-    begin
-        clk <= '1;
-        forever #100 clk <= ~clk;
-    end
-
-    task Reset;
-        newSample = '0;
-        writeSample = '0;
-
-        rst = '1;
-        repeat(5) @(posedge clk);
-        rst = '0; @(posedge clk);
-    endtask
-
-    task Write(logic [19:0] data);
-        writeSample = '1;
-        newSample = data;
-        @(posedge clk);
-        #10;
-        writeSample = '0;
-    endtask
-
-    int i;
-    initial
-    begin
-        Reset();
-        repeat(3) @(posedge clk);
-        #10;
-
-        Write(20'h75000);
-
-        // subtracting bin 0 happens here, oldestSample must be valid.
-        assert(DUT.Address == '0);
-        assert(DUT.RAMWrite == '0);
-        assert(oldestSample == '0);
-        assert(DUT.DataValid == '0);
-        @(posedge clk);
-        #10;
-
-        // subtracting bin 1 is happening now
-        // new data should be being written to the RAM, replacing the previous data.
-        assert(DUT.Address == '0);
-        assert(DUT.RAMWrite == '1);
-        assert(oldestSample == '0);
-        assert(DUT.DataValid == '0);
-        assert(sample0 == 20'h75000);
-        @(posedge clk);
-        #10;
-
-        // subtracting bin 2 now
-        // new data should be in RAM, but outputs should still be steady.
-        assert(DUT.Address == '0);
-        assert(DUT.RAMWrite == '0);
-        assert(oldestSample == '0);
-        assert(DUT.DataValid == '0);
-        assert(sample0 == 20'h75000);
-        @(posedge clk);
-        #10;
-
-        // subtracting bin 3 now
-        // we should now return to the idle state, and address should have incremented
-        assert(DUT.Address == 1);
-        assert(DUT.RAMWrite == '0);
-        assert(oldestSample == '0);
-        assert(DUT.DataValid == '0);
-        assert(sample0 == 20'h75000);
-        @(posedge clk);
-        #10;
-
-        repeat(5) @(posedge clk); // pretend to wait for this sample to finish processing
-
-        // process until the RAM is theoretically full
-        for(i = 1; i < 512; i++)
+    string FileLine = "";
+    task InsertData(int samples);
+        for(int i = 0; i < samples; i++)
         begin
-            Write(20'h75000 + i);
-            repeat(5) @(posedge clk);
-            #10;
+            sampleReady = '1;
+            inputSample = InputData[i];
+            @(posedge clk);
+            sampleReady = '0;
+            repeat(250) @(posedge clk);
+            if(i < 20 || i % 10 == 0) $display("Sample %4d finished", i);
+
+            for(int j = 0; j < BINCOUNT; j++) FileLine = $sformatf("%s%0d,", FileLine, outBins[j]);
+            $fwrite(FileHandle, "%s\n", FileLine);
+            FileLine = "";
         end
+    endtask
 
-        Write(20'h775200);
+    task CheckOutputs;
+        $display("Raw Data:");
+        for(int i = 0; i < 120; i++) $display("%d,%d", ExpectedOutputs[i], outBins[i]);
 
-        // we should now see the first ever sample on the output, and from now on we will read and write RAM.
-        assert(DUT.Address == 0);
-        assert(oldestSample == 20'h75000);
-        assert(DUT.DataValid == '1);
-        repeat(5) @(posedge clk);
-        #10;
-        
-        Write(20'h75201);
+        /*$display("Comparisons:");
+        for(int i = 0; i < 120; i++)
+        begin
+            real min, max;
+            min = real'(ExpectedOutputs[i]) * 0.9;
+            max = real'(ExpectedOutputs[i]) * 1.1;
+            assert(outBins[i] > min) else $display("Bin %d had too low value %d, expected %d.", i, outBins[i], ExpectedOutputs[i]);
+            assert(outBins[i] < max) else $display("Bin %d had too high value %d, expected %d.", i, outBins[i], ExpectedOutputs[i]);
+        end*/
+    endtask
 
-        assert(DUT.Address == 1);
-        assert(oldestSample == 20'h75001);
-        assert(DUT.DataValid == '1);
-        repeat(5) @(posedge clk);
-        #10;
+    initial
+    begin
+        FileHandle = $fopen("dftoutput.csv", "w");
 
-        Write(20'h75202);
+        Reset();
+        InsertData(LEN);
+        CheckOutputs();
 
-        assert(DUT.Address == 2);
-        assert(oldestSample == 20'h75002);
-        assert(DUT.DataValid == '1);
-        repeat(5) @(posedge clk);
-        
-        #1000;
+        $fclose(FileHandle);
         $stop;
     end
 endmodule
