@@ -13,9 +13,12 @@ add wave -noupdate /LV_Driver_testbench/clk
 add wave -noupdate /LV_Driver_testbench/rst
 add wave -noupdate -radix unsigned /LV_Driver_testbench/ld_u/WaitCntr
 add wave -noupdate /LV_Driver_testbench/ld_u/ps
+add wave -noupdate /LV_Driver_testbench/ld_u/BinCntr
+add wave -noupdate /LV_Driver_testbench/ld_u/BinLast
+add wave -noupdate -radix decimal /LV_Driver_testbench/ld_u/ColorCount
 add wave -noupdate /LV_Driver_testbench/ld_u/Color
 TreeUpdate [SetDefaultTree]
-WaveRestoreCursors {{Cursor 1} {656299562 ps} 0}
+WaveRestoreCursors {{Cursor 1} {1036756390 ps} 0}
 quietly wave cursor active 1
 configure wave -namecolwidth 150
 configure wave -valuecolwidth 100
@@ -31,4 +34,4 @@ configure wave -griddelta 40
 configure wave -timeline 0
 configure wave -timelineunits ps
 update
-WaveRestoreZoom {649884140 ps} {658076140 ps}
+WaveRestoreZoom {1033566739 ps} {1041758739 ps}

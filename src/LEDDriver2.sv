@@ -1,7 +1,8 @@
 module LEDDriver2 #(
     parameter LEDS  = 50,                   // number of LEDs being drivern
     parameter FREQ  = 12_500_000,           // clk frequency
-    parameter BIN_QTY = 12
+    parameter BIN_QTY = 12,
+    parameter FREQ_DIV = 4
 ) (
     output logic dOut, clkOut,              // outputs to LED
     output logic done,                      // comms output to visualizer
@@ -13,16 +14,16 @@ module LEDDriver2 #(
 );
 
     localparam waitCntrSize = $clog2(FREQ/2000); // 0.5~1 ms wait
+    localparam FD_LOG = $clog2(FREQ_DIV);
 
     logic [BIN_QTY - 1 : 0][23 : 0] rgbRegistered;
     logic [BIN_QTY - 1 : 0][$clog2(LEDS) - 1 : 0] LEDCountsRegistered;
 
     logic [waitCntrSize - 1 : 0] WaitCntr;
     logic [$clog2(BIN_QTY) - 1 : 0] BinCntr;
-    logic [5 : 0] SerialCntr;
+    logic [5 + FD_LOG : 0] SerialCntr;
 
     logic [$clog2(BIN_QTY) - 1 : 0] BinLast;
-
 
     logic [23 : 0] Color;
     logic [$clog2(LEDS) - 1 : 0] ColorCount;
@@ -80,11 +81,12 @@ module LEDDriver2 #(
                     LEDCountsRegistered[BinCntr] <= LEDCountsRegistered[BinCntr] - 1;
                     if (ps == LOAD_S) ColorCount <= ColorCount - 1;
                     if (LEDCountsRegistered[BinCntr] <= 1) BinCntr <= BinCntr + 1;
-                    SerialCntr <= 23;
+                    SerialCntr <= {5'd23,{FD_LOG{1'b1}}};
 
                     // ensures 50 LEDs are always filled
                     if (BinCntr == (BIN_QTY - 1)) begin 
                         BinCntr <= BinLast;
+                        Color <= rgbRegistered[BinLast];
                         LEDCountsRegistered[BinLast] = ColorCount;
                     end
 
@@ -95,14 +97,14 @@ module LEDDriver2 #(
 
                     // set output clock to valid
                     data_v <= '1;
-                    dOut <= Color[SerialCntr];
+                    dOut <= Color[SerialCntr[5 + FD_LOG : FD_LOG]];
                     SerialCntr <= SerialCntr - 1;
                 end
             endcase 
         end
     end
 
-    assign clkOut = data_v & ~clk;
+    assign clkOut = data_v & ~SerialCntr[FD_LOG-1];
     assign done = ps == WAIT_S;
 
 endmodule
@@ -131,7 +133,8 @@ module LEDDriver2_testbench();
     // DUT
     LEDDriver2 #(
         .LEDS(LEDS), 
-        .FREQ(TB_FREQ)
+        .FREQ(TB_FREQ),
+        .FREQ_DIV(5)
     ) dut (
         .dOut    (dOut   ),
         .clkOut  (clkOut ),
@@ -204,7 +207,8 @@ module LV_Driver_testbench();
 
     LEDDriver2 #(
         .LEDS(LEDS), 
-        .FREQ(TB_FREQ)
+        .FREQ(TB_FREQ),
+        .FREQ_DIV(5)
     ) ld_u (
         .dOut    (dOut      ),
         .clkOut  (clkOut    ),

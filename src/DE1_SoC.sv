@@ -20,7 +20,7 @@ module DE1_SoC (HEX0, HEX1, HEX2, HEX3, HEX4, HEX5, KEY, LEDR, SW, GPIO_0, CLOCK
 	// set LEDS to the number of WS2801 LEDs in series in your LED strip
 	// set complexity to 0, 1 or 2 based on the behavior you want to see described in HardLedValues.sv
 	// feel free to modify the reset assignment to what you would like instead
-
+	/*
 
 	localparam LEDS = 50;		// number of leds being driver
 	localparam COMPLEXITY = 3;	// see HardLEDValues.sv header comment for explanation
@@ -28,17 +28,17 @@ module DE1_SoC (HEX0, HEX1, HEX2, HEX3, HEX4, HEX5, KEY, LEDR, SW, GPIO_0, CLOCK
 
 	logic start, done;
 	logic [(24*LEDS)-1:0] led_rgb;
-	//logic [5:0] clk_divider;
+	logic [5:0] clk_divider;
 	logic rst, clk;
 	
-	/*
+	
 	always_ff @(posedge CLOCK50) begin
 		clk_divider <= rst ? '0 : clk_divider + 1'b1;
 	end
 
 	assign clk = clk_divider[5]; 
-	*/
-	/*
+	
+	
 	LEDDriver #(
         .LEDS(LEDS), 
         .FREQ(781_250)
@@ -65,13 +65,15 @@ module DE1_SoC (HEX0, HEX1, HEX2, HEX3, HEX4, HEX5, KEY, LEDR, SW, GPIO_0, CLOCK
 	// --------------------------------------------------------------------------------------------
 	// 							LEDDriver and Linear Visulizer Test
 
-	parameter W = 6;                        // max whole value 63
-	parameter D = 10;                       // decimal precision to ~.001
-	//parameter LEDS  = 50;                   // number of LEDs being driven
-	parameter BIN_QTY = 12;
+	parameter W = 6;        	// max whole value 63
+	parameter D = 10;       	// decimal precision to ~.001
+	parameter LEDS  = 50;   	// number of LEDs being driven
+	parameter BIN_QTY = 12;	
+	parameter FREQ_DIV = 8;			// how much slower driver output frequency is to the sys clock
 
 	integer i;
 
+	logic rst;
 	logic dOut, clkOut;
     logic [BIN_QTY - 1 : 0][23 : 0] rgb;
     logic [BIN_QTY - 1 : 0][$clog2(LEDS) - 1 : 0] LEDCounts;
@@ -85,9 +87,13 @@ module DE1_SoC (HEX0, HEX1, HEX2, HEX3, HEX4, HEX5, KEY, LEDR, SW, GPIO_0, CLOCK
 	logic locked;
 	logic clk_12M5;
 
+	assign rst = ~KEY[0];
 	assign GPIO_0[18] = dOut;
 	assign GPIO_0[19] = clkOut;
-	assign LEDR[0] = ld_done;
+	assign LEDR[0] = locked;
+	assign LEDR[1] = lv_dv;
+	assign LEDR[2] = ld_done;
+	assign LEDR[9] = rst;
 	assign lv_start = '1;
 
 	
@@ -106,17 +112,19 @@ module DE1_SoC (HEX0, HEX1, HEX2, HEX3, HEX4, HEX5, KEY, LEDR, SW, GPIO_0, CLOCK
 		for (i = 0; i < BIN_QTY; i++) begin
             noteAmplitudes[i] = testAmplitudes[i];
             notePositions[i] = testPositions[i];
-        end
+		end
 	end
 
 	PLL pll (
-		.refclk(CLOCK50),   //  refclk.clk
-		.rst(rst),      //   reset.reset
-		.outclk_0(clk_12M5), // outclk0.clk
-		.locked(locked)    //  locked.export
+		.refclk		(CLOCK50),  //  refclk.clk
+		.rst		(rst	),  //   reset.reset
+		.outclk_0	(clk_12M5), // outclk0.clk
+		.locked		(locked	)   //  locked.export
 	);
 
-	LEDDriver2 ld_u (
+	LEDDriver2 #(
+		.FREQ_DIV(4)
+		) ld_u (
 		.dOut    (dOut      ),
 		.clkOut  (clkOut    ),
 		.done    (ld_done   ),
