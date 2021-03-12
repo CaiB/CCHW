@@ -44,10 +44,12 @@ module LEDDriver2 #(
     always_comb begin
         case (ps)
             WAIT_S: if (&WaitCntr & start)                  ns = CNTR_S;
+                    else                                    ns = ps;
             CNTR_S: if (ColorCount == 0)                    ns = WAIT_S;
                     else if (rgbRegistered[BinCntr] == 0)   ns = CNTR_S;
                     else                                    ns = LOAD_S;
             LOAD_S: if (&SerialCntr)                        ns = CNTR_S;
+                    else                                    ns = ps;
             default:                                        ns = WAIT_S;
         endcase
     end

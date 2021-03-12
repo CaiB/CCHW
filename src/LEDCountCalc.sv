@@ -3,6 +3,7 @@ module LEDCountCalc #(
     parameter D = 10,                       // decimal precision to ~.001
 
     parameter LEDS = 50,
+    parameter LEDS_X = 20,                  // 0.0195... ~ 20 ~ 0000010100 
     parameter BIN_QTY  = 12
 ) (
     output logic [BIN_QTY - 1 : 0][$clog2(LEDS) - 1 : 0] LEDCount,  // count for the final value doesn't matter
@@ -13,21 +14,24 @@ module LEDCountCalc #(
     input logic start, clk, rst
 );
 
-    logic [1:0] valid_delay;
-    logic [W + D - 1 + $clog2(BIN_QTY) - $clog2(LEDS) : 0] thresholdAmplitude, thresholdAmplitude_d1;
+    logic [3:0] valid_delay;
+    logic [W + D + D - 1 + $clog2(BIN_QTY) - $clog2(LEDS) : 0] thresholdAmplitude;
+    logic [W + D - 1 + $clog2(BIN_QTY) - $clog2(LEDS) : 0] thresholdAmplitude_d1;
+
+    logic [BIN_QTY - 1 : 0][$clog2(LEDS) - 1 : 0] LEDCountReg, LEDCountReg_d1;
 
     integer i;
 
     always_comb begin
         // cycle 1
-        thresholdAmplitude = amplitudeSumNew_i / LEDS;
+        thresholdAmplitude = amplitudeSumNew_i * LEDS_X; // division by 1/LEDS
 
         // cycle 2
         for (i = 0; i < BIN_QTY; i++) begin
-            LEDCount[i] = noteAmplitudes_i[i] / thresholdAmplitude_d1;
+            LEDCountReg[i] = noteAmplitudes_i[i] / thresholdAmplitude_d1;
         end
 
-        data_v = valid_delay[1];
+        data_v = valid_delay[3];
 
     end
 
@@ -36,9 +40,10 @@ module LEDCountCalc #(
             valid_delay = '0;
         end
         else begin
-            thresholdAmplitude_d1 <= thresholdAmplitude;
-            
-            valid_delay <= {valid_delay[0], start};
+            thresholdAmplitude_d1 <= thresholdAmplitude[W + D + D - 1 + $clog2(BIN_QTY) - $clog2(LEDS) : D]; // drop bottom D bits
+            LEDCountReg_d1 <= LEDCountReg;
+            LEDCount <= LEDCountReg_d1;
+            valid_delay <= {valid_delay[2:0], start};
         end
         
     end
@@ -106,6 +111,8 @@ module LEDCountCalc_testbench ();
 
     task run();
         begin
+            
+
             start = '1;
             test_input(); 
             repeat(2) @(posedge clk);

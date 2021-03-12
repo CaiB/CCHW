@@ -28,16 +28,17 @@ module DE1_SoC (HEX0, HEX1, HEX2, HEX3, HEX4, HEX5, KEY, LEDR, SW, GPIO_0, CLOCK
 
 	logic start, done;
 	logic [(24*LEDS)-1:0] led_rgb;
-	logic [5:0] clk_divider;
+	//logic [5:0] clk_divider;
 	logic rst, clk;
 	
-
+	/*
 	always_ff @(posedge CLOCK50) begin
 		clk_divider <= rst ? '0 : clk_divider + 1'b1;
 	end
 
 	assign clk = clk_divider[5]; 
-
+	*/
+	/*
 	LEDDriver #(
         .LEDS(LEDS), 
         .FREQ(781_250)
@@ -60,7 +61,82 @@ module DE1_SoC (HEX0, HEX1, HEX2, HEX3, HEX4, HEX5, KEY, LEDR, SW, GPIO_0, CLOCK
         .done   (done   ), 
         .rst    (rst    )
     );
-
+	*/
 	// --------------------------------------------------------------------------------------------
+	// 							LEDDriver and Linear Visulizer Test
+
+	parameter W = 6;                        // max whole value 63
+	parameter D = 10;                       // decimal precision to ~.001
+	//parameter LEDS  = 50;                   // number of LEDs being driven
+	parameter BIN_QTY = 12;
+
+	integer i;
+
+	logic dOut, clkOut;
+    logic [BIN_QTY - 1 : 0][23 : 0] rgb;
+    logic [BIN_QTY - 1 : 0][$clog2(LEDS) - 1 : 0] LEDCounts;
+    logic [BIN_QTY - 1 : 0][W + D - 1 : 0] noteAmplitudes;
+    logic [BIN_QTY - 1 : 0][W + D - 1 : 0] notePositions;
+
+    logic ld_done, lv_dv;
+    logic lv_start;
+
+	// PLL STUFF
+	logic locked;
+	logic clk_12M5;
+
+	assign GPIO_0[18] = dOut;
+	assign GPIO_0[19] = clkOut;
+	assign LEDR[0] = ld_done;
+	assign lv_start = '1;
+
+	
+	logic [W + D - 1 : 0] testAmplitudes [BIN_QTY - 1 : 0];
+    logic [W + D - 1 : 0] testPositions [BIN_QTY - 1 : 0];
+
+    initial begin
+        $readmemb("../other/testNotePositions.mem", testPositions);
+        $readmemb("../other/testNoteAmplitudes.mem", testAmplitudes);
+    end
+
+	always_comb begin
+		noteAmplitudes = '0;
+		notePositions = '0;
+
+		for (i = 0; i < BIN_QTY; i++) begin
+            noteAmplitudes[i] = testAmplitudes[i];
+            notePositions[i] = testPositions[i];
+        end
+	end
+
+	PLL pll (
+		.refclk(CLOCK50),   //  refclk.clk
+		.rst(rst),      //   reset.reset
+		.outclk_0(clk_12M5), // outclk0.clk
+		.locked(locked)    //  locked.export
+	);
+
+	LEDDriver2 ld_u (
+		.dOut    (dOut      ),
+		.clkOut  (clkOut    ),
+		.done    (ld_done   ),
+		.rgb     (rgb       ),
+		.LEDCounts(LEDCounts),
+		.start   (lv_dv     ),
+		.clk     (clk_12M5  ),
+		.rst     (rst || !locked)
+	);
+
+
+    LinearVisualizer lv_u (
+        .rgb            (rgb            ),
+        .LEDCounts      (LEDCounts      ),
+        .data_v         (lv_dv          ),
+        .noteAmplitudes (noteAmplitudes ),
+        .notePositions  (notePositions  ),
+        .start          (lv_start       ),
+        .clk            (clk_12M5       ),
+        .rst            (rst || !locked )
+    );
 	
 endmodule

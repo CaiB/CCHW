@@ -56,11 +56,9 @@ module AmpPreprocessor #(
             amplitudeSumNew += noteAmplitudesReduced[k];
         end
 
+        // cycle 4
         data_v = valid_delay[3];
-        
-        noteAmplitudes_o = noteAmplitudesReduced;
-        noteAmplitudesFast_o = noteAmplitudesFast;
-        amplitudeSumNew_o = amplitudeSumNew;
+    
     end
 
     // pass signals between each cycle stage
@@ -71,6 +69,11 @@ module AmpPreprocessor #(
         else begin
             amplitudeSum_d1 <= amplitudeSum;
             threshold_d1    <= threshold;
+
+            // register the outputs
+            noteAmplitudes_o <= noteAmplitudesReduced;
+            noteAmplitudesFast_o <= noteAmplitudesFast;
+            amplitudeSumNew_o <= amplitudeSumNew;
 
             valid_delay <= {valid_delay[2:0], start};
         end

@@ -3,7 +3,7 @@
 import math
 import sys
 
-VALUE = 0.02
+VALUE = 0.5
 DECIMAL_BITS = 10
 
 def fixedPointEstimate(value, depth):
@@ -54,11 +54,10 @@ if (n != 3):
 else :
     value = float(sys.argv[1])
     bitLength = int(sys.argv[2])
+
 bits, value = fixedPointEstimate(value, bitLength)
-#print("binary: " + bits)
-#print("value: " + str(value))
-#print("whole/param equivilent: " + str(binaryValue(bits)))
-#print(bits+","+str(value)+","+str(binaryValue(bits)))
+
+
 
 sys.stdout.write(bits+","+str(value)+","+str(binaryValue(bits)))
 sys.stdout.flush()
