@@ -2,8 +2,8 @@
 vlib work
 
 # Source and Testbench files
-vlog -work work "../src/DFT2.sv"
-vlog -work work "../src/Test_DFT2.sv"
+vlog -work work "../src/DFT.sv"
+vlog -work work "../src/Test_DFT.sv"
 
 # Call simulator
 vsim -voptargs="+acc" -t 1ps -lib work Test_OctaveStorage

@@ -2,7 +2,7 @@
 vlib work
 
 # Source and Testbench files
-vlog -work work +define+RAM_FPGA=1 "../src/DFT2.sv"
+vlog -work work +define+RAM_FPGA=1 "../src/DFT.sv"
 vlog -work work "../src/Test_FullSystem.sv"
 vlog -work work "../src/TrigLUTs.sv"
 vlog -work work "../src/NoteFinder.sv"
