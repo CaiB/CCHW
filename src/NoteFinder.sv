@@ -1,14 +1,19 @@
 import CCHW::*;
 
+// Note that the notes output can be a bit strange. The only signal guaranteed to be valid is the 'valid' bit for each note. If 0, the rest of the data for that note must be ignored
+// If valid is high, position and amplitude are well-defined. However, be aware that notes may be valid or invalid at any location in the array.
+// You should assume notes are completely randomly scattered throughout the array.
+// However, between input cycles, notes in the same position in the array are meant to be smoothly interpreted.
+// So if a note is present in slot 6, and a note is present in the next cycle in slot 6, it should be treated as the same note, however with updated position and amplitude info.
 module NoteFinder
 #(parameter N = 16, parameter BPO = 24, parameter OCT = 5, parameter BINS = OCT*BPO, parameter FPF = 10)
 (
-    output Note notes [0:11],
+    output Note notes [0:11], // the smoothed notes we processed
     output logic peaksOut [0:11], // mostly for debugging purposes
-    output logic finished,
-    input logic unsigned [N-1:0] dftBins [0:BINS-1],
-    input logic [9:0] minThreshold,
-    input logic startCycle,
+    output logic finished, // asserted for 1 cycle once processing is completed and note data is stable
+    input logic unsigned [N-1:0] dftBins [0:BINS-1], // the inputs from the DFT
+    input logic [9:0] minThreshold, // the minimum size peaks must be to even be considered as a potential note
+    input logic startCycle, // set this high for a cycle when the DFT has finished processing bins
     input logic clk, rst
 );
     genvar i;
@@ -60,6 +65,7 @@ module NoteFinder
     assign PeakSideIsL = BinHasPeak[CurrentBinLeft]; // whether there's a peak in the left bin of the 2 we're looking at
     assign PeakHere = BinHasPeak[CurrentBinLeft] || BinHasPeak[CurrentBinRight]; // whether the active 2 bins have a peak at all
 
+    // TODO INPUTS TO PEAKPLACE NEED TO BE PIPELINE STAGED
     logic [(NoteFPW + NoteFPF)-1:0] NoteDistPosition;
     PeakPlacer #(.N(N), .BPO(BPO), .FPW(NoteFPW), .FPF(NoteFPF)) PeakPlace(.peakPosition(NoteDistPosition),
         .binIndex(PeakSideIsL ? ({ActivePeakSlot, 1'b0}) : ({ActivePeakSlot, 1'b0} + 1'd1)),
@@ -113,6 +119,7 @@ module NoteFinder
     NoteAssociator #(.N(N), .FPF(FPF)) Associator(.outNotes(notes), .finished, .newPeaks(NewPeaks), .start(PeaksFinished), .clk, .rst);
 endmodule
 
+// Associates new peak data into existing notes, or creates new notes if there isn't one. Also decays and disables notes that are no longer present.
 module NoteAssociator
 #(parameter N = 16, parameter FPF = 10)
 (
@@ -324,9 +331,9 @@ endmodule
 module PeakDetector
 #(parameter N = 16)
 (
-    output logic isPeak,
+    output logic isPeak, // whether there is a peak here, or not
     input logic [N-1:0] left, right, here, // the bins to the left and right, as well as this bin here
-    input logic [N-1:0] threshold // how large the peak needs to be to be considered a peak, and not just noise
+    input logic [N-1:0] threshold // how large the peak needs to be to be considered a peak, as opposed to just noise
 );
     logic localMax;
     assign localMax = (left < here) && (here > right);
@@ -334,7 +341,8 @@ module PeakDetector
 endmodule
 
 // Given 120 numbers of width N, outputs the highest among all of them.
-module FindMax120 // TODO This is at the very least moderately hideous. Could probably make a recursive one that operates on 2^n sizes and assume the rest is synthesized away.
+// NOT USED, REPLACED BY FindMax120Approx FOR SPEED AND SIZE REASONS
+module FindMax120
 #(parameter N = 16)
 (
     output logic unsigned [N-1:0] maxValue,
@@ -383,8 +391,8 @@ endmodule
 module FindMax120Approx // TODO This is at the very least moderately hideous. Could probably make a recursive one that operates on 2^n sizes and assume the rest is synthesized away.
 #(parameter N = 16)
 (
-    output logic unsigned [N-1:0] maxValue,
-    input logic unsigned [N-1:0] values [0:119]
+    output logic unsigned [N-1:0] maxValue, // an approximation of the biggest value on the inputs (see notes above)
+    input logic unsigned [N-1:0] values [0:119] // the input values to search in
 );
     assign maxValue = values[0] | values[1] | values[2] | values[3] | values[4] | values[5] | values[6] | values[7] | values[8] | values[9] | values[10] | values[11] | values[12] | values[13] | values[14] | values[15] |
         values[16] | values[17] | values[18] | values[19] | values[20] | values[21] | values[22] | values[23] | values[24] | values[25] | values[26] | values[27] | values[28] | values[29] | values[30] | values[31] |
@@ -398,12 +406,15 @@ endmodule
 
 // FPW must be at least $clog2(BPO).
 // Increasing FPF above N does not yield better precision.
+// This looks at the bin to the left and right, and compares their relative content, as well as to the target bin content, to figure out where inside of our bin the peak should be placed
+// For example, if there is large content to the left and little to the right, we can assume the peak is located partially to the left, but still within this bin
+// THis module assumes that the center IS a peak, and will produce garbage output if the central 'here' input is in fact not a peak
 module PeakPlacer
 #(parameter N = 16, parameter BPO = 24, parameter FPW = 5, parameter FPF = 10)
 (
     output logic [(FPW+FPF)-1:0] peakPosition, // between 0 (inc) and BPO (exc)
     input logic [$clog2(BPO)-1:0] binIndex, // between 0 and BPO-1
-    input logic [N-1:0] left, right, here
+    input logic [N-1:0] left, right, here // the adjacent bin values in order to appropriately position where the peak is within our bin
 );
     logic [N-1:0] DiffL, DiffR, TotalAdjacentDiff;
     logic [(N*2)-1:0] PropDiffL, PropDiffR;
@@ -512,6 +523,7 @@ module PeakRegister
 endmodule
 
 
+// NOTE: only valid gets set to 0 on reset, position and amplitude remain undefined
 module NoteRegister
 (
     output Note out,
