@@ -1,14 +1,15 @@
-interface Note;
-    logic [4:0] position; // TODO totally random number
-    logic [25:0] amplitude;
-    modport In(input position, input amplitude);
-    modport Out(output position, output amplitude);
-endinterface
+typedef struct packed
+{
+    logic [15:0] position;
+    logic [15:0] amplitude;
+    logic valid;
+} Note;
 
 module NoteFinder
 #(parameter N = 16, parameter BPO = 24, parameter OCT = 5, parameter BINS = OCT*BPO)
 (
     output logic peaksOut [0:11],
+    output logic finished,
     //Note.Out [11:0] notes,
     input logic unsigned [N-1:0] dftBins [0:BINS-1],
     input logic [9:0] minThreshold,
@@ -19,7 +20,7 @@ module NoteFinder
 
     // Pre-process DFT input data
         // Shift by some value (amplify)
-        // IIR each bin
+        //TODO IIR each bin
     
     // Find maximum of all bins
     logic [N-1:0] OverallMaxBinVal;
@@ -30,7 +31,7 @@ module NoteFinder
     logic [N-1:0] PeakThreshold;
     assign PeakThreshold = (OverallMaxBinVal >>> 3) | {minThreshold, '0};
 
-    // Smooth adjacent bins
+    // TODO Smooth adjacent bins (needed?)
 
     // Detect peaks
     // -> Positions are now 0-119
@@ -111,6 +112,199 @@ module NoteFinder
 
     // 
 endmodule
+
+module NoteAssociator
+#(parameter N = 16, parameter FPF = 10)
+(
+    output Note outNotes [0:11],
+    output logic finished,
+    input Note newPeaks [0:11],
+    input logic start,
+    input logic clk, rst
+);
+    localparam ASSDIST = 16'b1111 << (FPF - 5); // Association distance of peak -> note. const 0.47
+    localparam DECAYSHIFT = 9; // How much an unassociated note should decay by each time. -1 -> 2x as much decay, +1 -> 1/2 as much decay
+
+    // Peaks come in through newPeaks. They get analyzed, and associated/merged into existing notes. This new set of notes is stored in AssociatedNotes.
+    // Once notes are associated, they get smoothed and registed to the output, ExistingNotes.
+    Note AssociatedNotes [0:11], ExistingNotes [0:11];
+    assign outNotes = ExistingNotes;
+
+    logic RegToExisting;
+    logic [3:0] AssociatingWriteLoc;
+    logic DoAssociatingWrite;
+    Note CurrentlyAssociating;
+
+    logic [11:0] AssociatedNotesValid, ExistingNotesValid; // Just a shorthand way to access all of ___Notes[*].valid
+
+    genvar i;
+    generate
+        for(i = 0; i < 12; i++)
+        begin: MakeCurrentNoteRegs
+            NoteRegister Current(.out(ExistingNotes[i]), .in(AssociatedNotes[i]), .write(RegToExisting), .clk, .rst);
+            NoteRegister New(.out(AssociatedNotes[i]), .in(CurrentlyAssociating), .write(DoAssociatingWrite && AssociatingWriteLoc == i), .clk, .rst);
+            assign AssociatedNotesValid[i] = AssociatedNotes[i].valid;
+            assign ExistingNotesValid[i] = ExistingNotes[i].valid;
+        end
+    endgenerate
+
+    // General procedure:
+    // Wait for data
+    // Associate new peaks to existing notes
+    // Wait extra cycle sfor weighted average to compute?
+    // Add notes for peaks that do not have a place to associate to
+    // Decay notes that have not been associated to this cycle
+    typedef enum { WAIT, ASSOC, WAVGHOLD, NEWNOTES, DECAYNOTES, FINISH, XXX } NoteAssState;
+    NoteAssState Present, Next;
+
+    logic [3:0] PeakCtr, NoteCtr; // counts 0~11 each for every possible combination
+    logic [11:0] PeakHasAssociated, NoteHasBeenAssociatedTo;
+
+    logic AssociateHere; // whether the current location is suitable for the peak to associate
+    logic [3:0] FirstEmptyNote; // the first empty note slot we can use for a new peak
+    logic HasEmptyNoteSlot;
+
+    //PeakWAvg #(.N(N)) Averager(.peakAmp(NewNoteAmp), .peakPos(NewNotePos), .in0Amp(outAmplitudes[NoteCtr]), .in0Pos(outPositions[NoteCtr]), .in1Amp(newPeakAmp[PeakCtr]), .in1Pos(newPeakPos[PeakCtr]));
+
+    always_ff @(posedge clk, posedge rst) // State register
+        if(rst) Present <= WAIT;
+        else Present <= Next;
+    
+    always_comb // Next state
+    begin
+        Next = XXX;
+        case(Present)
+            WAIT: if(start) Next = ASSOC;
+                  else Next = WAIT; // @LB
+            ASSOC: if(NoteCtr == 11 && PeakCtr == 11) Next = NEWNOTES;
+                  else Next = ASSOC; // @LB
+            NEWNOTES: if(NoteCtr == 11) Next = DECAYNOTES;
+                      else Next = NEWNOTES; // @LB
+            DECAYNOTES: if(NoteCtr == 11) Next = FINISH;
+                        else Next = DECAYNOTES; // @LB
+            FINISH: Next = WAIT;
+            default: Next = XXX;
+        endcase
+    end
+
+    always_comb // Combinational outputs
+    begin // TODO handle wraparound on ends
+        AssociateHere = (~PeakHasAssociated[PeakCtr] && // we not yet found a note to associate to
+                        ((ExistingNotes[NoteCtr].position - ASSDIST) < newPeaks[PeakCtr].position) && // peak is within range on left of note
+                        ((ExistingNotes[NoteCtr].position + ASSDIST) > newPeaks[PeakCtr].position)); // peak is within range on right of note
+        HasEmptyNoteSlot = '1;
+        case(AssociatedNotesValid) inside
+            12'b???????????0: FirstEmptyNote = 4'd0;
+            12'b??????????01: FirstEmptyNote = 4'd1;
+            12'b?????????011: FirstEmptyNote = 4'd2;
+            12'b????????0111: FirstEmptyNote = 4'd3;
+            12'b???????01111: FirstEmptyNote = 4'd4;
+            12'b??????011111: FirstEmptyNote = 4'd5;
+            12'b?????0111111: FirstEmptyNote = 4'd6;
+            12'b????01111111: FirstEmptyNote = 4'd7;
+            12'b???011111111: FirstEmptyNote = 4'd8;
+            12'b??0111111111: FirstEmptyNote = 4'd9;
+            12'b?01111111111: FirstEmptyNote = 4'd10;
+            12'b011111111111: FirstEmptyNote = 4'd11;
+            default:
+            begin
+                FirstEmptyNote = 'x;
+                HasEmptyNoteSlot = '0;
+            end
+        endcase
+
+        RegToExisting = (Present == FINISH);
+    end
+
+    always_comb // Association combinational
+    begin
+        CurrentlyAssociating = 'x;
+        DoAssociatingWrite = '0;
+        AssociatingWriteLoc = 'x;
+
+        if(Present == ASSOC)
+        begin
+            // TODO: if more than 1 peak associates to a note, we'll overwrite previous peak info!
+            if(~PeakHasAssociated[PeakCtr] && newPeaks[PeakCtr].valid && ExistingNotes[NoteCtr].valid) // we have a peak that fits here, and a note we can merge into
+            begin
+                CurrentlyAssociating.position = newPeaks[PeakCtr].position;
+                CurrentlyAssociating.amplitude = newPeaks[PeakCtr].amplitude;
+                CurrentlyAssociating.valid = '1;
+                DoAssociatingWrite = AssociateHere;
+                AssociatingWriteLoc = NoteCtr;
+            end
+        end
+        else if(Present == NEWNOTES)
+        begin
+            if(~PeakHasAssociated[NoteCtr] && newPeaks[NoteCtr].valid && HasEmptyNoteSlot) // we have a peak that wants to make a new note, and a place to put it
+            begin
+                CurrentlyAssociating.position = newPeaks[NoteCtr].position;
+                CurrentlyAssociating.amplitude = newPeaks[NoteCtr].amplitude;
+                CurrentlyAssociating.valid = '1;
+                DoAssociatingWrite = '1;
+                AssociatingWriteLoc = FirstEmptyNote;
+            end
+        end
+        else if(Present == DECAYNOTES)
+        begin
+            if(~NoteHasBeenAssociatedTo[NoteCtr] && ExistingNotes[NoteCtr].valid) // there is a valid note that has not been associated with
+            begin
+                CurrentlyAssociating.position = ExistingNotes[NoteCtr].position;
+                CurrentlyAssociating.amplitude = ExistingNotes[NoteCtr].amplitude - ((ExistingNotes[NoteCtr].amplitude >> DECAYSHIFT) | 16'b1); // OR in a bit to make sure we always subtract at least 1
+                CurrentlyAssociating.valid = ExistingNotes[NoteCtr].valid;
+                if(ExistingNotes[NoteCtr].amplitude == '0) CurrentlyAssociating.valid = '0; // If the note has become too small (and would underflow)
+                DoAssociatingWrite = '1;
+                AssociatingWriteLoc = NoteCtr;
+            end
+        end
+    end
+
+    always_ff @(posedge clk, posedge rst) // Counters
+    begin
+        if(rst || Present == WAIT)
+        begin
+            PeakCtr <= '0;
+            NoteCtr <= '0;
+        end
+        else if(Present == ASSOC || Present == NEWNOTES || Present == DECAYNOTES)
+        begin
+            if(NoteCtr == 11)
+            begin
+                NoteCtr <= '0;
+                if(PeakCtr != 11) PeakCtr <= PeakCtr + 1'b1;
+            end
+            else NoteCtr <= NoteCtr + 1'b1;
+        end
+    end
+
+    always_ff @(posedge clk, posedge rst) // Association registered
+    begin
+        finished <= (Present == FINISH);
+        if(rst || Present == WAIT)
+        begin
+            PeakHasAssociated <= '0;
+            NoteHasBeenAssociatedTo <= '0;
+        end
+
+        else if(Present == ASSOC && DoAssociatingWrite)
+        begin
+            PeakHasAssociated[PeakCtr] <= 1'b1;
+            NoteHasBeenAssociatedTo[NoteCtr] <= 1'b1;
+        end
+        else if(Present == NEWNOTES && DoAssociatingWrite)
+        begin
+            PeakHasAssociated[NoteCtr] <= 1'b1; // These use different counters, not a bug
+            NoteHasBeenAssociatedTo[FirstEmptyNote] <= 1'b1;
+        end
+    end
+
+    // notes register
+    // new notes
+    // IIR between
+    // exception if valid is rising, don't iir position
+
+endmodule
+
 
 // Checks if the middle bin is a local maximum, and is above a given threshold.
 module PeakDetector
@@ -302,6 +496,25 @@ module PeakRegister
             end
         end
 endmodule
+
+
+module NoteRegister
+(
+    output Note out,
+    input Note in,
+    input logic write,
+    input logic clk, rst
+);
+    always_ff @(posedge clk)
+        if(rst) out.valid <= '0;
+        else if(write)
+        begin
+            out.position <= in.position;
+            out.amplitude <= in.amplitude;
+            out.valid <= in.valid;
+        end
+endmodule
+
 
 module NoteOperationManager
 #(parameter OCT = 5)

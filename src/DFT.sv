@@ -132,7 +132,7 @@ module OperationManager
     typedef enum { WAIT, WRITE, LOOPSUB, LOOPADD, DONE, XXX } OpManState;
     OpManState Present, Next;
 
-    always_ff @(posedge clk) // State register
+    always_ff @(posedge clk, posedge rst) // State register
         if(rst) Present <= WAIT;
         else Present <= Next;
     
@@ -185,7 +185,7 @@ module OctaveSelector
 );
     logic [OCT-2:0] Previous, Present;
 
-    always_ff @(posedge clk)
+    always_ff @(posedge clk, posedge rst) // Async because otherwise SAPR throws a fit???
     begin
         if(rst)
         begin
@@ -261,7 +261,7 @@ module OctaveStorageRAM
 
     SampleRegister #(.N(N)) RegEnd(.out(OldRegOut), .in(RAMOut), .en(writeSample), .clk, .rst);
 
-    always_ff @(posedge clk) // State register
+    always_ff @(posedge clk, posedge rst) // State register
         if(rst) Present <= WAIT;
         else Present <= Next;
     

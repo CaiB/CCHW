@@ -1,12 +1,12 @@
 $DataFile = 'dfttestdata.txt';
 $TestFile = '../src/Test_DFT.sv';
 
-# Waves are defined as (Freqency [Hz], Amplitude [0~1], Phase [deg]).
+# Input signal (Superposition of 3 waves)
+#           Freq   Amp  Phase
+#            Hz    0~1   deg
 $Wave1 = @(167.54, 0.3, 0);
-$Wave2 = @(420.69, 0.3, 90);
-#$Wave2 = @(0, 0, 0);
-$Wave3 = @(905.79, 0.3, 127);
-#$Wave3 = @(0, 0, 0);
+$Wave2 = @(420.69, 0.2, 90);
+$Wave3 = @(905.79, 0.4, 127);
 
 $SampleRate = 48000;
 
@@ -101,7 +101,7 @@ module Test_DFT;
     logic signed [15:0] InputData [0:LEN-1];
     initial `$readmemh("../other/dfttestdata.txt", InputData);
     logic unsigned [31:0] ExpectedOutputs [0:BINCOUNT-1];
-    assign ExpectedOutputs = { $ExpectedValues };
+    assign ExpectedOutputs = '{ $ExpectedValues };
 
     integer FileHandle;
 
@@ -115,9 +115,10 @@ module Test_DFT;
         rst = '1;
         inputSample = '0;
         sampleReady = '0;
-        @(posedge clk);
+        repeat(500) @(posedge clk);
+        @(negedge clk);
         rst = '0;
-        @(posedge clk);
+        repeat(5) @(posedge clk);
     endtask
 
     string FileLine = "";
@@ -129,7 +130,8 @@ module Test_DFT;
             @(posedge clk);
             sampleReady = '0;
             repeat(250) @(posedge clk);
-            if(i < 20 || i % 10 == 0) `$display("Sample %4d finished", i);
+            if(i < 20 || i % 500 == 0) `$display("Sample %4d finished", i);
+            if(i == 20) `$display("Slowing output to every 500 samples...");
 
             for(int j = 0; j < BINCOUNT; j++) FileLine = `$sformatf("%s%0d,", FileLine, outBins[j]);
             `$fwrite(FileHandle, "%s\n", FileLine);
