@@ -1,3 +1,5 @@
+import CCHW::*;
+
 /*This module loads data into the TRDB LCM screen's control registers 
  * after system reset. 
  * 
@@ -69,7 +71,8 @@ module part1 (
 	logic unsigned [N-1:0] BinsSmall [0:(BPO*OC)-1];
 	logic NFStart;
 	logic [9:0] SyncedSwitches;
-	NoteFinder #(.BPO(BPO), .OCT(OC), .N(N)) TheNoteFinder(.peaksOut(NFPeaks), .dftBins(BinsSmall), .minThreshold(SyncedSwitches), .startCycle(NFStart), .clk(CLOCK_50), .rst(reset));
+	Note Notes [0:11];
+	NoteFinder #(.BPO(BPO), .OCT(OC), .N(N)) TheNoteFinder(.notes(Notes), .peaksOut(NFPeaks), .dftBins(BinsSmall), .minThreshold(SyncedSwitches), .startCycle(NFStart), .clk(CLOCK_50), .rst(reset));
 
 	// Visual outputs
 	logic [9:0] InputAbsTrim;
@@ -83,7 +86,7 @@ module part1 (
 		HEX2 = {1'b1, {2{~NFPeaks[6]}}, 1'b1, {2{~NFPeaks[7]}}, 1'b1};
 		HEX3 = {1'b1, {2{~NFPeaks[4]}}, 1'b1, {2{~NFPeaks[5]}}, 1'b1};
 		HEX4 = {1'b1, {2{~NFPeaks[2]}}, 1'b1, {2{~NFPeaks[3]}}, 1'b1};
-		HEX5 = {1'b1, {2{~NFPeaks[0]}}, 1'b1, {2{~NFPeaks[1]}}, 1'b1};
+		HEX5 = {Notes[0].position[10], {2{~NFPeaks[0]}}, 1'b1, {2{~NFPeaks[1]}}, 1'b1};
 	end
 
 	genvar i;

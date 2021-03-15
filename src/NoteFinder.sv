@@ -1,16 +1,11 @@
-typedef struct packed
-{
-    logic [15:0] position;
-    logic [15:0] amplitude;
-    logic valid;
-} Note;
+import CCHW::*;
 
 module NoteFinder
-#(parameter N = 16, parameter BPO = 24, parameter OCT = 5, parameter BINS = OCT*BPO)
+#(parameter N = 16, parameter BPO = 24, parameter OCT = 5, parameter BINS = OCT*BPO, parameter FPF = 10)
 (
-    output logic peaksOut [0:11],
+    output Note notes [0:11],
+    output logic peaksOut [0:11], // mostly for debugging purposes
     output logic finished,
-    //Note.Out [11:0] notes,
     input logic unsigned [N-1:0] dftBins [0:BINS-1],
     input logic [9:0] minThreshold,
     input logic startCycle,
@@ -87,6 +82,7 @@ module NoteFinder
     // Re-registered versions of "Saved" signals, for placement into next sample-pipeline stage
     logic [N-1:0] RegPeakPositions [0:11], RegPeakAmplitudes [0:11];
     logic RegPeaksValid [0:11];
+    Note NewPeaks [0:11];
    
     generate
         for(i = 0; i < 12; i++)
@@ -97,20 +93,24 @@ module NoteFinder
 
             // Re-registered version of previous data, only updated once each sample is finished processing. Used as note association is a second sample-pipeline stage.
             PeakRegister #(.N(N)) PeakReg2(.amp(RegPeakAmplitudes[i]), .pos(RegPeakPositions[i]), .hasPeak(RegPeaksValid[i]), .ampIn(SavedPeakAmplitudes[i]), .posIn(SavedPeakPositions[i]), .peakIn(SavedPeaksValid[i]), .write(PeaksFinished), .clk, .rst);
+
+            // For input to the associator
+            assign NewPeaks[i].position = RegPeakPositions[i];
+            assign NewPeaks[i].amplitude = RegPeakAmplitudes[i];
+            assign NewPeaks[i].valid = RegPeaksValid[i];
         end
     endgenerate
 
     assign peaksOut = RegPeaksValid;
 
     // Associate peaks to existing notes, shifting them if needed
-    // -> notes max qty 12 (BPO/2)
-
     // Create new notes if peaks don't have corresponding note
-
     // Decay notes not associated to
-    // -> notes max qty still 12 (BPO/2)?
+    //   -> notes max qty 12 (BPO/2)
+    //   all done by the associator
 
-    // 
+    // TODO connect finished elsewhere
+    NoteAssociator #(.N(N), .FPF(FPF)) Associator(.outNotes(notes), .finished, .newPeaks(NewPeaks), .start(PeaksFinished), .clk, .rst);
 endmodule
 
 module NoteAssociator
@@ -193,7 +193,11 @@ module NoteAssociator
                         ((ExistingNotes[NoteCtr].position - ASSDIST) < newPeaks[PeakCtr].position) && // peak is within range on left of note
                         ((ExistingNotes[NoteCtr].position + ASSDIST) > newPeaks[PeakCtr].position)); // peak is within range on right of note
         HasEmptyNoteSlot = '1;
-        case(AssociatedNotesValid) inside
+        // Not supported by Quartus D:
+        // case(AssociatedNotesValid) inside
+        // casez is apparently fine and the rest of the block remains the same.
+        // casez is a bit worse for debugging in simulation, but should work OK
+        casez(AssociatedNotesValid)
             12'b???????????0: FirstEmptyNote = 4'd0;
             12'b??????????01: FirstEmptyNote = 4'd1;
             12'b?????????011: FirstEmptyNote = 4'd2;
@@ -261,7 +265,12 @@ module NoteAssociator
 
     always_ff @(posedge clk, posedge rst) // Counters
     begin
-        if(rst || Present == WAIT)
+        if(rst)
+        begin
+            PeakCtr <= '0;
+            NoteCtr <= '0;
+        end
+        else if(Present == WAIT)
         begin
             PeakCtr <= '0;
             NoteCtr <= '0;
@@ -279,13 +288,17 @@ module NoteAssociator
 
     always_ff @(posedge clk, posedge rst) // Association registered
     begin
-        finished <= (Present == FINISH);
-        if(rst || Present == WAIT)
+        if(rst)
         begin
             PeakHasAssociated <= '0;
             NoteHasBeenAssociatedTo <= '0;
         end
-
+        else if(Present == WAIT)
+        begin
+            PeakHasAssociated <= '0;
+            NoteHasBeenAssociatedTo <= '0;
+            finished <= '0;
+        end
         else if(Present == ASSOC && DoAssociatingWrite)
         begin
             PeakHasAssociated[PeakCtr] <= 1'b1;
@@ -296,6 +309,7 @@ module NoteAssociator
             PeakHasAssociated[NoteCtr] <= 1'b1; // These use different counters, not a bug
             NoteHasBeenAssociatedTo[FirstEmptyNote] <= 1'b1;
         end
+        else if(Present == FINISH) finished <= '1;
     end
 
     // notes register
