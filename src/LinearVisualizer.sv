@@ -1,4 +1,3 @@
-include Common.sv;
 import CCHW::*;
 
 module LinearVisualizer #(

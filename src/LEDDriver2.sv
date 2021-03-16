@@ -1,4 +1,3 @@
-include Common.sv;
 import CCHW::*;
 
 module LEDDriver2 #(
@@ -51,7 +50,9 @@ module LEDDriver2 #(
             WAIT_S: if (&WaitCntr & start)                  ns = CNTR_S;
                     else                                    ns = ps;
             CNTR_S: if (ColorCount == 0)                    ns = WAIT_S;
+                    // if the curr color's counter is empty check the next bin
                     else if (LEDCountsRegistered[BinCntr] == 0)   ns = CNTR_S;
+                    // else serialize and send the color 
                     else                                    ns = LOAD_S;
             LOAD_S: if (&SerialCntr)                        ns = CNTR_S;
                     else                                    ns = ps;
