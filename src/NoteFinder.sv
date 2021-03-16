@@ -6,14 +6,96 @@ import CCHW::*;
 // However, between input cycles, notes in the same position in the array are meant to be smoothly interpreted.
 // So if a note is present in slot 6, and a note is present in the next cycle in slot 6, it should be treated as the same note, however with updated position and amplitude info.
 module NoteFinder
-#(parameter N = 16, parameter BPO = 24, parameter OCT = 5, parameter BINS = OCT*BPO, parameter FPF = 10)
+#(parameter N = 16, parameter BPO = 24, parameter OCT = 5, parameter BINS = OCT*BPO)
 (
     output Note notes [0:11], // the smoothed notes we processed
-    output logic peaksOut [0:11], // mostly for debugging purposes
+    output logic [11:0] peaksOut, // mostly for debugging purposes, whether folded bins had a peak at the index
     output logic finished, // asserted for 1 cycle once processing is completed and note data is stable
     input logic unsigned [N-1:0] dftBins [0:BINS-1], // the inputs from the DFT
     input logic [9:0] minThreshold, // the minimum size peaks must be to even be considered as a potential note
     input logic startCycle, // set this high for a cycle when the DFT has finished processing bins
+    input logic clk, rst
+);
+    localparam FPW = $clog2(BPO);
+    localparam FPF = N - FPW;
+
+    // ==== PIPELINE STAGE 1 BEGIN ====
+    // Signals going into stage 2
+    logic [3:0] ActivePeakSlot_S2;
+    logic [$clog2(OCT)-1:0] ActiveOctave_S2;
+    logic PeaksFinished_S2, DoPeakOperation_S2, ClearPeaks_S2;
+    logic [$clog2(BINS)-1:0] CurrentBinLeft_S2, CurrentBinRight_S2;
+    logic PeakSideIsL_S2, PeakHere_S2;
+    logic [N-1:0] BinDataFarLeft_S2, BinDataLeft_S2, BinDataRight_S2, BinDataFarRight_S2;
+
+    NFInputStage #(.N(N), .BINS(BINS), .OCT(OCT), .BPO(BPO)) Stage1(.activePeakSlot(ActivePeakSlot_S2), .activeOctave(ActiveOctave_S2), .peaksFinished(PeaksFinished_S2), .doPeakOperation(DoPeakOperation_S2), .clearPeaks(ClearPeaks_S2),
+        .currentBinLeft(CurrentBinLeft_S2), .currentBinRight(CurrentBinRight_S2), .peakSideIsL(PeakSideIsL_S2), .peakHere(PeakHere_S2),
+        .binDataFarLeft(BinDataFarLeft_S2), .binDataLeft(BinDataLeft_S2), .binDataRight(BinDataRight_S2), .binDataFarRight(BinDataFarRight_S2),
+        .dftBins, .minThreshold, .startCycle, .clk, .rst);
+
+    // ==== PIPELINE STAGE 2 BEGIN ====
+    // Signals going into stage 3
+    logic [3:0] ActivePeakSlot_S3;
+    logic PeaksFinished_S3, DoPeakOperation_S3, ClearPeaks_S3;
+    logic [$clog2(BINS)-1:0] CurrentBinLeft_S3, CurrentBinRight_S3;
+    logic PeakSideIsL_S3, PeakHere_S3;
+    logic [N-1:0] BinDataFarLeft_S3, BinDataLeft_S3, BinDataRight_S3, BinDataFarRight_S3;
+    logic [(FPW + FPF)-1:0] NoteDistPosition_S3;
+
+    NFPeakPlaceStage #(.N(N), .BPO(BPO), .FPW(FPW), .FPF(FPF)) Stage2(.noteDistPosition(NoteDistPosition_S3),
+        .oActivePeakSlot(ActivePeakSlot_S3), .oPeakSideIsL(PeakSideIsL_S3), .oBinDataFarLeft(BinDataFarLeft_S3), .oBinDataLeft(BinDataLeft_S3), .oBinDataRight(BinDataRight_S3), .oBinDataFarRight(BinDataFarRight_S3),
+        .iActivePeakSlot(ActivePeakSlot_S2), .iPeakSideIsL(PeakSideIsL_S2), .iBinDataFarLeft(BinDataFarLeft_S2), .iBinDataLeft(BinDataLeft_S2), .iBinDataRight(BinDataRight_S2), .iBinDataFarRight(BinDataFarRight_S2),
+        .clk, .rst);
+    
+    // Other signals not used this stage but pipelined onwards
+    always_ff @(posedge clk)
+        if(rst)
+        begin
+            PeaksFinished_S3 <= '0;
+            DoPeakOperation_S3 <= '0;
+            ClearPeaks_S3 <= '0;
+            CurrentBinLeft_S3 <= '0;
+            CurrentBinRight_S3 <= '0;
+            PeakHere_S3 <= '0;
+        end
+        else
+        begin
+            PeaksFinished_S3 <= PeaksFinished_S2;
+            DoPeakOperation_S3 <= DoPeakOperation_S2;
+            ClearPeaks_S3 <= ClearPeaks_S2;
+            CurrentBinLeft_S3 <= CurrentBinLeft_S2;
+            CurrentBinRight_S3 <= CurrentBinRight_S2;
+            PeakHere_S3 <= PeakHere_S2;
+        end
+
+    // ==== PIPELINE STAGE 3 BEGIN ====
+    // TODO: This might need to split into 2 stages?
+    // Signals going into stage 4
+    logic PeaksFinished_S4;
+    Note NewPeaks_S4 [0:11];
+
+    NFPeakMergeStage #(.N(N), .FPW(FPW), .FPF(FPF)) Stage3(.peaksOut(NewPeaks_S4), .foldedBinHasPeak(peaksOut), .oPeaksFinished(PeaksFinished_S4),
+        .iActivePeakSlot(ActivePeakSlot_S3), .iDoPeakOperation(DoPeakOperation_S3), .iClearPeaks(ClearPeaks_S3), .iPeaksFinished(PeaksFinished_S3), .iPeakHere(PeakHere_S3),
+        .iNoteDistPosition(NoteDistPosition_S3), .iPeakSideIsL(PeakSideIsL_S3), .iBinDataLeft(BinDataLeft_S3), .iBinDataRight(BinDataRight_S3),
+        .clk, .rst);
+
+    // ==== PIPELINE STAGE 4 BEGIN ====
+    NFAssociateStage #(.N(N), .FPF(FPF)) Stage4(.outNotes(notes), .finished, .newPeaks(NewPeaks_S4), .start(PeaksFinished_S4), .clk, .rst);
+endmodule
+
+module NFInputStage
+#(parameter N, parameter BINS, parameter OCT, parameter BPO)
+(
+    output logic [3:0] activePeakSlot,
+    output logic [$clog2(OCT)-1:0] activeOctave,
+    output logic peaksFinished, doPeakOperation, clearPeaks,
+    output logic [$clog2(BINS)-1:0] currentBinLeft, currentBinRight,
+    output logic peakSideIsL, peakHere,
+    output logic [N-1:0] binDataFarLeft, binDataLeft, binDataRight, binDataFarRight,
+
+    input logic unsigned [N-1:0] dftBins [0:BINS-1], // the inputs from the DFT
+    input logic [9:0] minThreshold, // the minimum size peaks must be to even be considered as a potential note
+    input logic startCycle,
     input logic clk, rst
 );
     genvar i;
@@ -36,7 +118,7 @@ module NoteFinder
     // Detect peaks
     // -> Positions are now 0-119
     // -> Up to 60 peaks max =ceil(BINS/2)
-    logic BinHasPeak [0:BINS-1]; // TODO: change input
+    logic [BINS-1:0] BinHasPeak; // TODO: change input
     generate
         for(i = 1; i < BINS-1; i++)
         begin : PeakDetectors
@@ -45,35 +127,134 @@ module NoteFinder
     endgenerate
     PeakDetector #(.N(N)) PeakDetBot(.isPeak(BinHasPeak[0]), .left('0), .right(dftBins[1]), .here(dftBins[0]), .threshold(PeakThreshold));
     PeakDetector #(.N(N)) PeakDetTop(.isPeak(BinHasPeak[119]), .left(dftBins[118]), .right('0), .here(dftBins[119]), .threshold(PeakThreshold));
-
+    
     // Operation manager
     logic [3:0] ActivePeakSlot;
     logic [$clog2(OCT)-1:0] ActiveOctave;
     logic PeaksFinished, DoPeakOperation, ClearPeaks;
     NoteOperationManager #(.OCT(OCT)) OpMgr(.activeNoteSlot(ActivePeakSlot), .activeOctave(ActiveOctave), .finished(PeaksFinished), .doOperation(DoPeakOperation), .clearIntermediate(ClearPeaks), .start(startCycle), .clk, .rst);
 
-    // Adjust peak location within bin depending on surroundings (turn isPeak into numeric positions)
-    // -> Positions returned are 0.0-23.999, so octaves are also soft-merged. qty up to 60 (BINS/2)
-    localparam NoteFPW = $clog2(BPO);
-    localparam NoteFPF = 16 - NoteFPW;
-
-    // This section assumes there's 2 bins per note.
+    // PeakPlacer preprocessing
     logic [$clog2(BINS)-1:0] CurrentBinLeft, CurrentBinRight;
-    assign CurrentBinLeft = (ActiveOctave * BPO) + ({ActivePeakSlot, 1'b0}); // index of the left bin we're looking at
-    assign CurrentBinRight = CurrentBinLeft + 1'd1; // index of the right bin we're looking at
     logic PeakSideIsL, PeakHere;
-    assign PeakSideIsL = BinHasPeak[CurrentBinLeft]; // whether there's a peak in the left bin of the 2 we're looking at
-    assign PeakHere = BinHasPeak[CurrentBinLeft] || BinHasPeak[CurrentBinRight]; // whether the active 2 bins have a peak at all
+    logic [N-1:0] BinDataFarLeft, BinDataLeft, BinDataRight, BinDataFarRight;
 
-    // TODO INPUTS TO PEAKPLACE NEED TO BE PIPELINE STAGED
-    logic [(NoteFPW + NoteFPF)-1:0] NoteDistPosition;
-    PeakPlacer #(.N(N), .BPO(BPO), .FPW(NoteFPW), .FPF(NoteFPF)) PeakPlace(.peakPosition(NoteDistPosition),
-        .binIndex(PeakSideIsL ? ({ActivePeakSlot, 1'b0}) : ({ActivePeakSlot, 1'b0} + 1'd1)),
-        .left(PeakSideIsL ? (CurrentBinLeft == '0 ? '0 : dftBins[CurrentBinLeft - 1'd1]) : dftBins[CurrentBinLeft]),
-        .right(PeakSideIsL ? dftBins[CurrentBinRight] : (CurrentBinRight == BINS-1 ? '0 : dftBins[CurrentBinRight + 1'd1])),
-        .here(PeakSideIsL ? dftBins[CurrentBinLeft] : dftBins[CurrentBinRight]));
+    always_comb
+    begin
+        CurrentBinLeft = (ActiveOctave * BPO) + ({ActivePeakSlot, 1'b0}); // index of the left bin we're looking at
+        CurrentBinRight = CurrentBinLeft + 1'd1; // index of the right bin we're looking at
 
-    // Note: each slot spans 2 bins of storage
+        PeakSideIsL = BinHasPeak[CurrentBinLeft]; // whether there's a peak in the left bin of the 2 we're looking at
+        PeakHere = BinHasPeak[CurrentBinLeft] || BinHasPeak[CurrentBinRight]; // whether the active 2 bins have a peak at all
+
+        BinDataFarLeft = (CurrentBinLeft == '0 ? '0 : dftBins[CurrentBinLeft - 1'd1]); // bin to the left of the current pair, or 0 if we're on the left end
+        BinDataLeft = dftBins[CurrentBinLeft]; // the left bin in our pair
+        BinDataRight = dftBins[CurrentBinRight]; // the right bin in our pair
+        BinDataFarRight = (CurrentBinRight == BINS-1 ? '0 : dftBins[CurrentBinRight + 1'd1]); // bin to the right of the current pair, or 0 if we're on the right end
+    end
+
+    // Registers to delay signals for stage 2
+    always_ff @(posedge clk)
+        if(rst)
+        begin
+            activePeakSlot <= '0;
+            activeOctave <= '0;
+            peaksFinished <= '0;
+            doPeakOperation <= '0;
+            clearPeaks <= '0;
+            currentBinLeft <= '0;
+            currentBinRight <= '0;
+            peakSideIsL <= '0;
+            peakHere <= '0;
+            binDataFarLeft <= '0;
+            binDataLeft <= '0;
+            binDataRight <= '0;
+            binDataFarRight <= '0;
+        end
+        else
+        begin
+            activePeakSlot <= ActivePeakSlot;
+            activeOctave <= ActiveOctave;
+            peaksFinished <= PeaksFinished;
+            doPeakOperation <= DoPeakOperation;
+            clearPeaks <= ClearPeaks;
+            currentBinLeft <= CurrentBinLeft;
+            currentBinRight <= CurrentBinRight;
+            peakSideIsL <= PeakSideIsL;
+            peakHere <= PeakHere;
+            binDataFarLeft <= BinDataFarLeft;
+            binDataLeft <= BinDataLeft;
+            binDataRight <= BinDataRight;
+            binDataFarRight <= BinDataFarRight;
+        end
+endmodule
+
+module NFPeakPlaceStage
+#(parameter N, parameter BPO, parameter FPW, parameter FPF)
+(
+    output logic [(FPW + FPF)-1:0] noteDistPosition, // new
+
+    output logic [3:0] oActivePeakSlot, // old
+    output logic oPeakSideIsL,
+    output logic [N-1:0] oBinDataFarLeft, oBinDataLeft, oBinDataRight, oBinDataFarRight,
+
+    input logic [3:0] iActivePeakSlot,
+    input logic iPeakSideIsL,
+    input logic [N-1:0] iBinDataFarLeft, iBinDataLeft, iBinDataRight, iBinDataFarRight,
+    input clk, rst
+);
+
+    // Adjust peak location within bin depending on surroundings (turn isPeak into numeric positions)
+    // -> Positions returned are 0.0-23.999, so octaves are also soft-overlapped. qty up to 60 (BINS/2)
+    // This section assumes there's 2 bins per note.
+    logic [(FPW + FPF)-1:0] NoteDistPosition;
+    PeakPlacer #(.N(N), .BPO(BPO), .FPW(FPW), .FPF(FPF)) PeakPlace(.peakPosition(NoteDistPosition),
+        .binIndex(iPeakSideIsL ? {iActivePeakSlot, 1'b0} : {iActivePeakSlot, 1'b1}),
+        .left (iPeakSideIsL ? iBinDataFarLeft : iBinDataLeft),
+        .right(iPeakSideIsL ? iBinDataRight   : iBinDataFarRight),
+        .here (iPeakSideIsL ? iBinDataLeft    : iBinDataRight));
+    
+    // Registers to delay signals for stage 3
+    always_ff @(posedge clk)
+        if(rst)
+        begin
+            oActivePeakSlot <= '0;
+            oPeakSideIsL <= '0;
+            oBinDataFarLeft <= '0;
+            oBinDataLeft <= '0;
+            oBinDataRight <= '0;
+            oBinDataFarRight <= '0;
+            noteDistPosition <= '0;
+        end
+        else
+        begin
+            oActivePeakSlot <= iActivePeakSlot;
+            oPeakSideIsL <= iPeakSideIsL;
+            oBinDataFarLeft <= iBinDataFarLeft;
+            oBinDataLeft <= iBinDataLeft;
+            oBinDataRight <= iBinDataRight;
+            oBinDataFarRight <= iBinDataFarRight;
+            noteDistPosition <= NoteDistPosition;
+        end
+endmodule
+
+module NFPeakMergeStage
+#(parameter N, parameter FPW, parameter FPF)
+(
+    output Note peaksOut [0:11], // new
+    output logic [11:0] foldedBinHasPeak,
+
+    output logic oPeaksFinished, // old
+
+    input logic [3:0] iActivePeakSlot,
+    input logic iDoPeakOperation, iClearPeaks,
+    input logic iPeaksFinished, iPeakHere, iPeakSideIsL,
+    input logic [(FPW + FPF)-1:0] iNoteDistPosition,
+    input logic [N-1:0] iBinDataLeft, iBinDataRight,
+    input logic clk, rst
+);
+
+    // Note: each slot spans 2 bins of storage - well actually (BPO / 12) bins
     logic [N-1:0] SavedPeakPositions [0:11], SavedPeakAmplitudes [0:11]; // the currently saved peak's info
     logic [N-1:0] NewPeakPosition, NewPeakAmplitude; // new peak info that will get written
     logic SavedPeaksValid [0:11]; // whether each existing peak is valid
@@ -81,24 +262,25 @@ module NoteFinder
 
     PeakMergerItr #(.N(N)) PeakMerge(.outPos(NewPeakPosition), .outAmp(NewPeakAmplitude),
         .outValid(NewPeakValid), .doRegWrite(WritePeak),
-        .isPeak(PeakHere),
-        .peakPosition(NoteDistPosition), .peakAmp(PeakSideIsL ? dftBins[CurrentBinLeft] : dftBins[CurrentBinRight]),
-        .regPos(SavedPeakPositions[ActivePeakSlot]), .regAmp(SavedPeakAmplitudes[ActivePeakSlot]), .regValid(SavedPeaksValid[ActivePeakSlot]));
+        .isPeak(iPeakHere),
+        .peakPosition(iNoteDistPosition), .peakAmp(iPeakSideIsL ? iBinDataLeft : iBinDataRight),
+        .regPos(SavedPeakPositions[iActivePeakSlot]), .regAmp(SavedPeakAmplitudes[iActivePeakSlot]), .regValid(SavedPeaksValid[iActivePeakSlot]));
 
     // Re-registered versions of "Saved" signals, for placement into next sample-pipeline stage
     logic [N-1:0] RegPeakPositions [0:11], RegPeakAmplitudes [0:11];
-    logic RegPeaksValid [0:11];
+    logic [11:0] RegPeaksValid;
     Note NewPeaks [0:11];
    
+    genvar i;
     generate
         for(i = 0; i < 12; i++)
         begin : PeakStorage
             // Stores the current peaks. Each slot gets filled with a peak when one is found in the correct location.
             // If more get found in later cycles from higher octaves, the values get updated with a weighted average of (before + new).
-            PeakRegister #(.N(N)) PeakReg(.amp(SavedPeakAmplitudes[i]), .pos(SavedPeakPositions[i]), .hasPeak(SavedPeaksValid[i]), .ampIn(NewPeakAmplitude), .posIn(NewPeakPosition), .peakIn(NewPeakValid), .write(WritePeak && DoPeakOperation && ActivePeakSlot == i), .clk, .rst(rst || ClearPeaks));
+            PeakRegister #(.N(N)) PeakReg(.amp(SavedPeakAmplitudes[i]), .pos(SavedPeakPositions[i]), .hasPeak(SavedPeaksValid[i]), .ampIn(NewPeakAmplitude), .posIn(NewPeakPosition), .peakIn(NewPeakValid), .write(WritePeak && iDoPeakOperation && iActivePeakSlot == i), .clk, .rst(rst || iClearPeaks));
 
             // Re-registered version of previous data, only updated once each sample is finished processing. Used as note association is a second sample-pipeline stage.
-            PeakRegister #(.N(N)) PeakReg2(.amp(RegPeakAmplitudes[i]), .pos(RegPeakPositions[i]), .hasPeak(RegPeaksValid[i]), .ampIn(SavedPeakAmplitudes[i]), .posIn(SavedPeakPositions[i]), .peakIn(SavedPeaksValid[i]), .write(PeaksFinished), .clk, .rst);
+            PeakRegister #(.N(N)) PeakReg2(.amp(RegPeakAmplitudes[i]), .pos(RegPeakPositions[i]), .hasPeak(RegPeaksValid[i]), .ampIn(SavedPeakAmplitudes[i]), .posIn(SavedPeakPositions[i]), .peakIn(SavedPeaksValid[i]), .write(iPeaksFinished), .clk, .rst);
 
             // For input to the associator
             assign NewPeaks[i].position = RegPeakPositions[i];
@@ -106,22 +288,18 @@ module NoteFinder
             assign NewPeaks[i].valid = RegPeaksValid[i];
         end
     endgenerate
+    // These are already registered because of the above.
+    assign foldedBinHasPeak = RegPeaksValid;
+    assign peaksOut = NewPeaks;
 
-    assign peaksOut = RegPeaksValid;
-
-    // Associate peaks to existing notes, shifting them if needed
-    // Create new notes if peaks don't have corresponding note
-    // Decay notes not associated to
-    //   -> notes max qty 12 (BPO/2)
-    //   all done by the associator
-
-    // TODO connect finished elsewhere
-    NoteAssociator #(.N(N), .FPF(FPF)) Associator(.outNotes(notes), .finished, .newPeaks(NewPeaks), .start(PeaksFinished), .clk, .rst);
+    always_ff @(posedge clk)
+        if(rst) oPeaksFinished <= '0;
+        else oPeaksFinished <= iPeaksFinished;
 endmodule
 
 // Associates new peak data into existing notes, or creates new notes if there isn't one. Also decays and disables notes that are no longer present.
-module NoteAssociator
-#(parameter N = 16, parameter FPF = 10)
+module NFAssociateStage
+#(parameter N, parameter FPF)
 (
     output Note outNotes [0:11],
     output logic finished,

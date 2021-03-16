@@ -1,52 +1,19 @@
 import CCHW::*;
 
-/*This module loads data into the TRDB LCM screen's control registers 
- * after system reset. 
- * 
- * Inputs:
- *   CLOCK_50 		- FPGA on board 50 MHz clock
- *   CLOCK2_50  	- FPGA on board 2nd 50 MHz clock
- *   KEY 			- FPGA on board pyhsical key switches
- *   FPGA_I2C_SCLK 	- FPGA I2C communication protocol clock
- *   FPGA_I2C_SDAT  - FPGA I2C communication protocol data
- *   AUD_XCK 		- Audio CODEC data
- *   AUD_DACLRCK 	- Audio CODEC data
- *   AUD_ADCLRCK 	- Audio CODEC data
- *   AUD_BCLK 		- Audio CODEC data
- *   AUD_ADCDAT 	- Audio CODEC data
- *
- * Output:
- *   AUD_DACDAT 	- output Audio CODEC data
- */
-module part1 (
-	CLOCK_50, 
-	CLOCK2_50, 
-	KEY, 
-	FPGA_I2C_SCLK, 
-	FPGA_I2C_SDAT, 
-	AUD_XCK, 
-	AUD_DACLRCK, 
-	AUD_ADCLRCK, 
-	AUD_BCLK, 
-	AUD_ADCDAT, 
-	AUD_DACDAT,
-	LEDR,
-	SW,
-	HEX0, HEX1, HEX2, HEX3, HEX4, HEX5
-);
+module part1
+(
+	output logic FPGA_I2C_SCLK, 
+	inout FPGA_I2C_SDAT, 
+	output logic AUD_XCK, AUD_DACDAT,
+	input logic AUD_DACLRCK, AUD_ADCLRCK, AUD_BCLK, AUD_ADCDAT, 
 
-	input CLOCK_50, CLOCK2_50;
-	input [0:0] KEY;
-	output FPGA_I2C_SCLK;
-	inout FPGA_I2C_SDAT;
-	output AUD_XCK;
-	input AUD_DACLRCK, AUD_ADCLRCK, AUD_BCLK;
-	input AUD_ADCDAT;
-	output AUD_DACDAT;
-	output [9:0] LEDR;
-	input [9:0] SW;
-	output [6:0] HEX0, HEX1, HEX2, HEX3, HEX4, HEX5;
-	
+	output logic [9:0] LEDR,
+	output logic [6:0] HEX0, HEX1, HEX2, HEX3, HEX4, HEX5,
+	input logic [9:0] SW,
+	input logic [3:0] KEY, 
+	input logic CLOCK_50, CLOCK2_50
+);
+	// Audio-related
 	wire read_ready, write_ready, read, write;
 	wire [23:0] readdata_left, readdata_right;
 	wire [23:0] writedata_left, writedata_right;
@@ -59,20 +26,25 @@ module part1 (
 	parameter TOPSIZE = 8192;
 	parameter ND = (N*2)+(OC-1);
 
-	logic signed [24:0] rawInput;
-	logic signed [N-1:0] inputSample;
+	logic clk_12M5, locked;
+	PLL PLL12M5 (.refclk(CLOCK_50), .rst(reset), .outclk_0(clk_12M5), .locked);
+
+	// DFT
+	logic signed [24:0] rawInput; // audio data with both channels summed
+	logic signed [N-1:0] inputSample; // summed audio data, trimmed to fit into DFT input
 	assign rawInput = readdata_left + readdata_right;
 	assign inputSample = rawInput[23:(24-N)];
 
 	logic unsigned [ND-1:0] outBins [0:(BPO*OC)-1];
-	DFT #(.BPO(BPO), .OC(OC), .N(N), .TOPSIZE(TOPSIZE), .ND(ND)) TheDFT(.outBins, .inputSample, .sampleReady(read_ready), .doingRead(read), .clk(CLOCK_50), .rst(reset));
+	DFT #(.BPO(BPO), .OC(OC), .N(N), .TOPSIZE(TOPSIZE), .ND(ND)) TheDFT(.outBins, .inputSample, .sampleReady(read_ready), .doingRead(read), .clk(clk_12M5), .rst(reset || !locked));
 
-	logic NFPeaks [0:11];
+	// NoteFinder
+	logic [11:0] NFPeaks;
 	logic unsigned [N-1:0] BinsSmall [0:(BPO*OC)-1];
 	logic NFStart;
 	logic [9:0] SyncedSwitches;
 	Note Notes [0:11];
-	NoteFinder #(.BPO(BPO), .OCT(OC), .N(N)) TheNoteFinder(.notes(Notes), .peaksOut(NFPeaks), .dftBins(BinsSmall), .minThreshold(SyncedSwitches), .startCycle(NFStart), .clk(CLOCK_50), .rst(reset));
+	NoteFinder #(.BPO(BPO), .OCT(OC), .N(N)) TheNoteFinder(.notes(Notes), .peaksOut(NFPeaks), .dftBins(BinsSmall), .minThreshold(SyncedSwitches), .startCycle(NFStart), .clk(clk_12M5), .rst(reset || !locked));
 
 	// Visual outputs
 	logic [9:0] InputAbsTrim;
@@ -99,47 +71,20 @@ module part1 (
 
 		for(i = 0; i < 10; i++)
 		begin : MakeSWSyncs
-			Synchronizer SWSync(.out(SyncedSwitches[i]), .in(SW[i]), .clk(CLOCK_50), .rst(reset));
+			Synchronizer SWSync(.out(SyncedSwitches[i]), .in(SW[i]), .clk(clk_12M5), .rst(reset || !locked));
 		end
 	endgenerate
 
 	logic [3:0] DelayLine;
-	always_ff @(posedge CLOCK_50)
-		if(reset) DelayLine <= '0;
+	always_ff @(posedge clk_12M5)
+		if(reset || !locked) DelayLine <= '0;
 		else DelayLine <= (DelayLine << 1) | read;
 	
 	assign NFStart = DelayLine[3];
 	/* End custom code */
 	
-	clock_generator my_clock_gen(
-		CLOCK2_50,
-		reset,
-		AUD_XCK
-	);
-
-	audio_and_video_config cfg(
-		CLOCK_50,
-		reset,
-		FPGA_I2C_SDAT,
-		FPGA_I2C_SCLK
-	);
-
-	audio_codec codec(
-		CLOCK_50,
-		reset,
-		read,	
-		write,
-		writedata_left, 
-		writedata_right,
-		AUD_ADCDAT,
-		AUD_BCLK,
-		AUD_ADCLRCK,
-		AUD_DACLRCK,
-		read_ready, write_ready,
-		readdata_left, readdata_right,
-		AUD_DACDAT
-	);
-
+	// Audio system
+	clock_generator my_clock_gen(CLOCK2_50, reset, AUD_XCK);
+	audio_and_video_config cfg(CLOCK_50, reset, FPGA_I2C_SDAT, FPGA_I2C_SCLK);
+	audio_codec codec(CLOCK_50, reset, read, write, writedata_left, writedata_right, AUD_ADCDAT, AUD_BCLK, AUD_ADCLRCK, AUD_DACLRCK, read_ready, write_ready, readdata_left, readdata_right, AUD_DACDAT);
 endmodule
-
-
