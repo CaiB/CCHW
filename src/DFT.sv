@@ -119,20 +119,20 @@ endmodule
 module OperationManager
 #(parameter OCT = 5, BINS = 24)
 (
-    output logic [$clog2(OCT)-1:0] octave,
-    output logic operation, // add / subtract
-    output logic [$clog2(BINS)-1:0] bin,
+    output logic [$clog2(OCT)-1:0] octave, // which octave should be worked on now
+    output logic operation, // whether to currently add new data / subtract old data from the running sum
+    output logic [$clog2(BINS)-1:0] bin, // which bin should be worked on now
     output logic ready, // asserted while we are ready and waiting for an audio sample
     output logic writeSample, // asserted for 1 cycle before processing to write the sample into each octave
     output logic doCalculations, // asserted during the loops
     output logic finishedProcessing, // asserted for 1 clock cycle after the current sample is done being processed
-    input logic sampleReady,
+    input logic sampleReady, // assert this when there is audio data ready for analysis (starting the operation)
     input logic clk, rst
 );
     typedef enum { WAIT, WRITE, LOOPSUB, LOOPADD, DONE, XXX } OpManState;
     OpManState Present, Next;
 
-    always_ff @(posedge clk) // State register
+    always_ff @(posedge clk, posedge rst) // State register
         if(rst) Present <= WAIT;
         else Present <= Next;
     
@@ -179,13 +179,13 @@ endmodule
 module OctaveSelector
 #(parameter OCT = 5)
 (
-    output logic [OCT-1:0] enableOctaves,
+    output logic [OCT-1:0] enableOctaves, // one line for each octave, specifying which ones sohuld be active this sample cycle, up to all can be true at once
     input logic incr, // processingFinished from OperationManager
     input logic clk, rst
 );
     logic [OCT-2:0] Previous, Present;
 
-    always_ff @(posedge clk)
+    always_ff @(posedge clk, posedge rst) // Async because otherwise SAPR throws a fit???
     begin
         if(rst)
         begin
@@ -212,9 +212,9 @@ endmodule
 module OctaveStorage
 #(parameter SIZE = 8192, parameter N = 16)
 (
-    output logic signed [N-1:0] sample0, sample1, oldestSample,
-    input logic signed [N-1:0] newSample,
-    input logic writeSample,
+    output logic signed [N-1:0] sample0, sample1, oldestSample, // the first, second, and last sample in storage
+    input logic signed [N-1:0] newSample, // the new sample to add to storage
+    input logic writeSample, // whether to write the new sample into storage. Only keep true for 1 clock cycle for a single write
     input logic clk, rst
 );
     logic signed [SIZE-1:0][N-1:0] Inter;
@@ -242,9 +242,9 @@ endmodule
 module OctaveStorageRAM
 #(parameter SIZE = 8192, parameter N = 16) // N must match size of RAM, which is determined by SIZE.
 (
-    output logic signed [N-1:0] sample0, sample1, oldestSample,
-    input logic signed [N-1:0] newSample,
-    input logic writeSample,
+    output logic signed [N-1:0] sample0, sample1, oldestSample, // the first, second, and last sample in storage
+    input logic signed [N-1:0] newSample, // the new sample to add to storage
+    input logic writeSample, // whether to write the new sample into storage. Only keep true for 1 clock cycle for a single write
     input logic clk, rst
 );
     SampleRegister #(.N(N)) Reg0(.out(sample0), .in(newSample), .en(writeSample), .clk, .rst);
@@ -261,7 +261,7 @@ module OctaveStorageRAM
 
     SampleRegister #(.N(N)) RegEnd(.out(OldRegOut), .in(RAMOut), .en(writeSample), .clk, .rst);
 
-    always_ff @(posedge clk) // State register
+    always_ff @(posedge clk, posedge rst) // State register
         if(rst) Present <= WAIT;
         else Present <= Next;
     

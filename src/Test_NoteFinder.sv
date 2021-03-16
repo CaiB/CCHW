@@ -305,3 +305,101 @@ module Test_NoteFinder;
         $stop;
     end
 endmodule
+
+typedef struct packed
+{
+    logic [15:0] position;
+    logic [15:0] amplitude;
+    logic valid;
+} Note;
+
+module Test_NoteAssociator;
+    localparam FPF = 10;
+    localparam N = 16;
+
+    Note outNotes [0:11];
+    logic finished;
+    Note newPeaks [0:11];
+    logic start;
+    logic clk, rst;
+    
+    NoteAssociator #(.N(N), .FPF(FPF)) DUT(.outNotes, .finished, .newPeaks, .start, .clk, .rst);
+
+    int Whole;
+    real Fractional;
+    function logic [N-1:0] RealToFixed(input real in, input int fpf);
+        Whole = (in >= 0 ? int'($floor(in)) : int'($ceil(in)));
+        Fractional = in - real'(Whole);
+        RealToFixed = (Whole << fpf) | (int'(Fractional * (1 << fpf)));
+    endfunction
+
+    function real FixedToReal(input logic [N-1:0] in, input int fpf);
+        FixedToReal = (in * (2.0 ** -fpf));
+    endfunction
+
+    real outPositionsR [0:11], newPeakPosR [0:11];
+    genvar i;
+    generate
+        for(i = 0; i < 12; i++)
+        begin
+            assign outPositionsR[i] = FixedToReal(outNotes[i].position, FPF);
+            assign newPeakPosR[i] = FixedToReal(newPeaks[i].position, FPF);
+        end
+    endgenerate
+
+    real ASSDISTR = FixedToReal(DUT.ASSDIST, FPF);
+
+    initial
+    begin
+        clk <= '1;
+        forever #50 clk <= ~clk;
+    end
+
+    task Reset;
+        newPeaks = '{default:0};
+        start = '0;
+        rst = '1;
+        repeat(5) @(posedge clk);
+        @(negedge clk);
+        rst = '0; @(posedge clk);
+    endtask
+
+    initial
+    begin
+        Reset();
+        newPeaks[0] = { RealToFixed(0.542, FPF), 16'd10000, 1'b1 };
+        newPeaks[1] = { 'x, 1'b0 };
+        newPeaks[2] = { 'x, 1'b0 };
+        newPeaks[3] = { RealToFixed(7.111, FPF), 16'd10000, 1'b1 };
+        newPeaks[4] = { RealToFixed(8.020, FPF), 16'd20000, 1'b1 };
+        newPeaks[5] = { RealToFixed(11.50, FPF), 16'd30000, 1'b1 };
+        newPeaks[6] = { 'x, 1'b0 };
+        newPeaks[7] = { 'x, 1'b0 };
+        newPeaks[8] = { 'x, 1'b0 };
+        newPeaks[9] = { 'x, 1'b0 };
+        newPeaks[10] = { 'x, 1'b0 };
+        newPeaks[11] = { RealToFixed(23.97, FPF), 16'd15775, 1'b1 };
+        start = '1; @(posedge clk);
+        start = '0; @(posedge clk);
+        while(~finished) @(posedge clk);
+
+        newPeaks[0] = { RealToFixed(0.542, FPF), 16'd10000, 1'b1 }; // Exact same
+        newPeaks[1] = { 'x, 1'b0 };
+        newPeaks[2] = { 'x, 1'b0 };
+        newPeaks[3] = { RealToFixed(6.980, FPF), 16'd15000, 1'b1 }; // Shift pos left, increase amplitude
+        newPeaks[4] = { RealToFixed(9.207, FPF), 16'd20000, 1'b1 }; // Shift pos right too far
+        newPeaks[5] = { 'x, 1'b0 }; // No longer a peak
+        newPeaks[6] = { 'x, 1'b0 };
+        newPeaks[7] = { 'x, 1'b0 };
+        newPeaks[8] = { RealToFixed(16.987, FPF), 16'd18888, 1'b1 }; // New peak
+        newPeaks[9] = { 'x, 1'b0 };
+        newPeaks[10] = { 'x, 1'b0 };
+        newPeaks[11] = { RealToFixed(23.97, FPF), 16'd7777, 1'b1 }; // Decrease amplitude
+        start = '1; @(posedge clk);
+        start = '0; @(posedge clk);
+        while(~finished) @(posedge clk);
+
+        repeat(5) @(posedge clk); // see if correct data gets latched out
+        $stop;
+    end
+endmodule

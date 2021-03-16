@@ -1,25 +1,26 @@
-interface Note;
-    logic [4:0] position; // TODO totally random number
-    logic [25:0] amplitude;
-    modport In(input position, input amplitude);
-    modport Out(output position, output amplitude);
-endinterface
+import CCHW::*;
 
+// Note that the notes output can be a bit strange. The only signal guaranteed to be valid is the 'valid' bit for each note. If 0, the rest of the data for that note must be ignored
+// If valid is high, position and amplitude are well-defined. However, be aware that notes may be valid or invalid at any location in the array.
+// You should assume notes are completely randomly scattered throughout the array.
+// However, between input cycles, notes in the same position in the array are meant to be smoothly interpreted.
+// So if a note is present in slot 6, and a note is present in the next cycle in slot 6, it should be treated as the same note, however with updated position and amplitude info.
 module NoteFinder
-#(parameter N = 16, parameter BPO = 24, parameter OCT = 5, parameter BINS = OCT*BPO)
+#(parameter N = 16, parameter BPO = 24, parameter OCT = 5, parameter BINS = OCT*BPO, parameter FPF = 10)
 (
-    output logic peaksOut [0:11],
-    //Note.Out [11:0] notes,
-    input logic unsigned [N-1:0] dftBins [0:BINS-1],
-    input logic [9:0] minThreshold,
-    input logic startCycle,
+    output Note notes [0:11], // the smoothed notes we processed
+    output logic peaksOut [0:11], // mostly for debugging purposes
+    output logic finished, // asserted for 1 cycle once processing is completed and note data is stable
+    input logic unsigned [N-1:0] dftBins [0:BINS-1], // the inputs from the DFT
+    input logic [9:0] minThreshold, // the minimum size peaks must be to even be considered as a potential note
+    input logic startCycle, // set this high for a cycle when the DFT has finished processing bins
     input logic clk, rst
 );
     genvar i;
 
     // Pre-process DFT input data
         // Shift by some value (amplify)
-        // IIR each bin
+        //TODO IIR each bin
     
     // Find maximum of all bins
     logic [N-1:0] OverallMaxBinVal;
@@ -30,7 +31,7 @@ module NoteFinder
     logic [N-1:0] PeakThreshold;
     assign PeakThreshold = (OverallMaxBinVal >>> 3) | {minThreshold, '0};
 
-    // Smooth adjacent bins
+    // TODO Smooth adjacent bins (needed?)
 
     // Detect peaks
     // -> Positions are now 0-119
@@ -64,6 +65,7 @@ module NoteFinder
     assign PeakSideIsL = BinHasPeak[CurrentBinLeft]; // whether there's a peak in the left bin of the 2 we're looking at
     assign PeakHere = BinHasPeak[CurrentBinLeft] || BinHasPeak[CurrentBinRight]; // whether the active 2 bins have a peak at all
 
+    // TODO INPUTS TO PEAKPLACE NEED TO BE PIPELINE STAGED
     logic [(NoteFPW + NoteFPF)-1:0] NoteDistPosition;
     PeakPlacer #(.N(N), .BPO(BPO), .FPW(NoteFPW), .FPF(NoteFPF)) PeakPlace(.peakPosition(NoteDistPosition),
         .binIndex(PeakSideIsL ? ({ActivePeakSlot, 1'b0}) : ({ActivePeakSlot, 1'b0} + 1'd1)),
@@ -86,6 +88,7 @@ module NoteFinder
     // Re-registered versions of "Saved" signals, for placement into next sample-pipeline stage
     logic [N-1:0] RegPeakPositions [0:11], RegPeakAmplitudes [0:11];
     logic RegPeaksValid [0:11];
+    Note NewPeaks [0:11];
    
     generate
         for(i = 0; i < 12; i++)
@@ -96,29 +99,241 @@ module NoteFinder
 
             // Re-registered version of previous data, only updated once each sample is finished processing. Used as note association is a second sample-pipeline stage.
             PeakRegister #(.N(N)) PeakReg2(.amp(RegPeakAmplitudes[i]), .pos(RegPeakPositions[i]), .hasPeak(RegPeaksValid[i]), .ampIn(SavedPeakAmplitudes[i]), .posIn(SavedPeakPositions[i]), .peakIn(SavedPeaksValid[i]), .write(PeaksFinished), .clk, .rst);
+
+            // For input to the associator
+            assign NewPeaks[i].position = RegPeakPositions[i];
+            assign NewPeaks[i].amplitude = RegPeakAmplitudes[i];
+            assign NewPeaks[i].valid = RegPeaksValid[i];
         end
     endgenerate
 
     assign peaksOut = RegPeaksValid;
 
     // Associate peaks to existing notes, shifting them if needed
-    // -> notes max qty 12 (BPO/2)
-
     // Create new notes if peaks don't have corresponding note
-
     // Decay notes not associated to
-    // -> notes max qty still 12 (BPO/2)?
+    //   -> notes max qty 12 (BPO/2)
+    //   all done by the associator
 
-    // 
+    // TODO connect finished elsewhere
+    NoteAssociator #(.N(N), .FPF(FPF)) Associator(.outNotes(notes), .finished, .newPeaks(NewPeaks), .start(PeaksFinished), .clk, .rst);
 endmodule
+
+// Associates new peak data into existing notes, or creates new notes if there isn't one. Also decays and disables notes that are no longer present.
+module NoteAssociator
+#(parameter N = 16, parameter FPF = 10)
+(
+    output Note outNotes [0:11],
+    output logic finished,
+    input Note newPeaks [0:11],
+    input logic start,
+    input logic clk, rst
+);
+    localparam ASSDIST = 16'b1111 << (FPF - 5); // Association distance of peak -> note. const 0.47
+    localparam DECAYSHIFT = 9; // How much an unassociated note should decay by each time. -1 -> 2x as much decay, +1 -> 1/2 as much decay
+
+    // Peaks come in through newPeaks. They get analyzed, and associated/merged into existing notes. This new set of notes is stored in AssociatedNotes.
+    // Once notes are associated, they get smoothed and registed to the output, ExistingNotes.
+    Note AssociatedNotes [0:11], ExistingNotes [0:11];
+    assign outNotes = ExistingNotes;
+
+    logic RegToExisting;
+    logic [3:0] AssociatingWriteLoc;
+    logic DoAssociatingWrite;
+    Note CurrentlyAssociating;
+
+    logic [11:0] AssociatedNotesValid, ExistingNotesValid; // Just a shorthand way to access all of ___Notes[*].valid
+
+    genvar i;
+    generate
+        for(i = 0; i < 12; i++)
+        begin: MakeCurrentNoteRegs
+            NoteRegister Current(.out(ExistingNotes[i]), .in(AssociatedNotes[i]), .write(RegToExisting), .clk, .rst);
+            NoteRegister New(.out(AssociatedNotes[i]), .in(CurrentlyAssociating), .write(DoAssociatingWrite && AssociatingWriteLoc == i), .clk, .rst);
+            assign AssociatedNotesValid[i] = AssociatedNotes[i].valid;
+            assign ExistingNotesValid[i] = ExistingNotes[i].valid;
+        end
+    endgenerate
+
+    // General procedure:
+    // Wait for data
+    // Associate new peaks to existing notes
+    // Wait extra cycle sfor weighted average to compute?
+    // Add notes for peaks that do not have a place to associate to
+    // Decay notes that have not been associated to this cycle
+    typedef enum { WAIT, ASSOC, WAVGHOLD, NEWNOTES, DECAYNOTES, FINISH, XXX } NoteAssState;
+    NoteAssState Present, Next;
+
+    logic [3:0] PeakCtr, NoteCtr; // counts 0~11 each for every possible combination
+    logic [11:0] PeakHasAssociated, NoteHasBeenAssociatedTo;
+
+    logic AssociateHere; // whether the current location is suitable for the peak to associate
+    logic [3:0] FirstEmptyNote; // the first empty note slot we can use for a new peak
+    logic HasEmptyNoteSlot;
+
+    //PeakWAvg #(.N(N)) Averager(.peakAmp(NewNoteAmp), .peakPos(NewNotePos), .in0Amp(outAmplitudes[NoteCtr]), .in0Pos(outPositions[NoteCtr]), .in1Amp(newPeakAmp[PeakCtr]), .in1Pos(newPeakPos[PeakCtr]));
+
+    always_ff @(posedge clk, posedge rst) // State register
+        if(rst) Present <= WAIT;
+        else Present <= Next;
+    
+    always_comb // Next state
+    begin
+        Next = XXX;
+        case(Present)
+            WAIT: if(start) Next = ASSOC;
+                  else Next = WAIT; // @LB
+            ASSOC: if(NoteCtr == 11 && PeakCtr == 11) Next = NEWNOTES;
+                  else Next = ASSOC; // @LB
+            NEWNOTES: if(NoteCtr == 11) Next = DECAYNOTES;
+                      else Next = NEWNOTES; // @LB
+            DECAYNOTES: if(NoteCtr == 11) Next = FINISH;
+                        else Next = DECAYNOTES; // @LB
+            FINISH: Next = WAIT;
+            default: Next = XXX;
+        endcase
+    end
+
+    always_comb // Combinational outputs
+    begin // TODO handle wraparound on ends
+        AssociateHere = (~PeakHasAssociated[PeakCtr] && // we not yet found a note to associate to
+                        ((ExistingNotes[NoteCtr].position - ASSDIST) < newPeaks[PeakCtr].position) && // peak is within range on left of note
+                        ((ExistingNotes[NoteCtr].position + ASSDIST) > newPeaks[PeakCtr].position)); // peak is within range on right of note
+        HasEmptyNoteSlot = '1;
+        // Not supported by Quartus D:
+        // case(AssociatedNotesValid) inside
+        // casez is apparently fine and the rest of the block remains the same.
+        // casez is a bit worse for debugging in simulation, but should work OK
+        casez(AssociatedNotesValid)
+            12'b???????????0: FirstEmptyNote = 4'd0;
+            12'b??????????01: FirstEmptyNote = 4'd1;
+            12'b?????????011: FirstEmptyNote = 4'd2;
+            12'b????????0111: FirstEmptyNote = 4'd3;
+            12'b???????01111: FirstEmptyNote = 4'd4;
+            12'b??????011111: FirstEmptyNote = 4'd5;
+            12'b?????0111111: FirstEmptyNote = 4'd6;
+            12'b????01111111: FirstEmptyNote = 4'd7;
+            12'b???011111111: FirstEmptyNote = 4'd8;
+            12'b??0111111111: FirstEmptyNote = 4'd9;
+            12'b?01111111111: FirstEmptyNote = 4'd10;
+            12'b011111111111: FirstEmptyNote = 4'd11;
+            default:
+            begin
+                FirstEmptyNote = 'x;
+                HasEmptyNoteSlot = '0;
+            end
+        endcase
+
+        RegToExisting = (Present == FINISH);
+    end
+
+    always_comb // Association combinational
+    begin
+        CurrentlyAssociating = 'x;
+        DoAssociatingWrite = '0;
+        AssociatingWriteLoc = 'x;
+
+        if(Present == ASSOC)
+        begin
+            // TODO: if more than 1 peak associates to a note, we'll overwrite previous peak info!
+            if(~PeakHasAssociated[PeakCtr] && newPeaks[PeakCtr].valid && ExistingNotes[NoteCtr].valid) // we have a peak that fits here, and a note we can merge into
+            begin
+                CurrentlyAssociating.position = newPeaks[PeakCtr].position;
+                CurrentlyAssociating.amplitude = newPeaks[PeakCtr].amplitude;
+                CurrentlyAssociating.valid = '1;
+                DoAssociatingWrite = AssociateHere;
+                AssociatingWriteLoc = NoteCtr;
+            end
+        end
+        else if(Present == NEWNOTES)
+        begin
+            if(~PeakHasAssociated[NoteCtr] && newPeaks[NoteCtr].valid && HasEmptyNoteSlot) // we have a peak that wants to make a new note, and a place to put it
+            begin
+                CurrentlyAssociating.position = newPeaks[NoteCtr].position;
+                CurrentlyAssociating.amplitude = newPeaks[NoteCtr].amplitude;
+                CurrentlyAssociating.valid = '1;
+                DoAssociatingWrite = '1;
+                AssociatingWriteLoc = FirstEmptyNote;
+            end
+        end
+        else if(Present == DECAYNOTES)
+        begin
+            if(~NoteHasBeenAssociatedTo[NoteCtr] && ExistingNotes[NoteCtr].valid) // there is a valid note that has not been associated with
+            begin
+                CurrentlyAssociating.position = ExistingNotes[NoteCtr].position;
+                CurrentlyAssociating.amplitude = ExistingNotes[NoteCtr].amplitude - ((ExistingNotes[NoteCtr].amplitude >> DECAYSHIFT) | 16'b1); // OR in a bit to make sure we always subtract at least 1
+                CurrentlyAssociating.valid = ExistingNotes[NoteCtr].valid;
+                if(ExistingNotes[NoteCtr].amplitude == '0) CurrentlyAssociating.valid = '0; // If the note has become too small (and would underflow)
+                DoAssociatingWrite = '1;
+                AssociatingWriteLoc = NoteCtr;
+            end
+        end
+    end
+
+    always_ff @(posedge clk, posedge rst) // Counters
+    begin
+        if(rst)
+        begin
+            PeakCtr <= '0;
+            NoteCtr <= '0;
+        end
+        else if(Present == WAIT)
+        begin
+            PeakCtr <= '0;
+            NoteCtr <= '0;
+        end
+        else if(Present == ASSOC || Present == NEWNOTES || Present == DECAYNOTES)
+        begin
+            if(NoteCtr == 11)
+            begin
+                NoteCtr <= '0;
+                if(PeakCtr != 11) PeakCtr <= PeakCtr + 1'b1;
+            end
+            else NoteCtr <= NoteCtr + 1'b1;
+        end
+    end
+
+    always_ff @(posedge clk, posedge rst) // Association registered
+    begin
+        if(rst)
+        begin
+            PeakHasAssociated <= '0;
+            NoteHasBeenAssociatedTo <= '0;
+        end
+        else if(Present == WAIT)
+        begin
+            PeakHasAssociated <= '0;
+            NoteHasBeenAssociatedTo <= '0;
+            finished <= '0;
+        end
+        else if(Present == ASSOC && DoAssociatingWrite)
+        begin
+            PeakHasAssociated[PeakCtr] <= 1'b1;
+            NoteHasBeenAssociatedTo[NoteCtr] <= 1'b1;
+        end
+        else if(Present == NEWNOTES && DoAssociatingWrite)
+        begin
+            PeakHasAssociated[NoteCtr] <= 1'b1; // These use different counters, not a bug
+            NoteHasBeenAssociatedTo[FirstEmptyNote] <= 1'b1;
+        end
+        else if(Present == FINISH) finished <= '1;
+    end
+
+    // notes register
+    // new notes
+    // IIR between
+    // exception if valid is rising, don't iir position
+
+endmodule
+
 
 // Checks if the middle bin is a local maximum, and is above a given threshold.
 module PeakDetector
 #(parameter N = 16)
 (
-    output logic isPeak,
+    output logic isPeak, // whether there is a peak here, or not
     input logic [N-1:0] left, right, here, // the bins to the left and right, as well as this bin here
-    input logic [N-1:0] threshold // how large the peak needs to be to be considered a peak, and not just noise
+    input logic [N-1:0] threshold // how large the peak needs to be to be considered a peak, as opposed to just noise
 );
     logic localMax;
     assign localMax = (left < here) && (here > right);
@@ -126,7 +341,8 @@ module PeakDetector
 endmodule
 
 // Given 120 numbers of width N, outputs the highest among all of them.
-module FindMax120 // TODO This is at the very least moderately hideous. Could probably make a recursive one that operates on 2^n sizes and assume the rest is synthesized away.
+// NOT USED, REPLACED BY FindMax120Approx FOR SPEED AND SIZE REASONS
+module FindMax120
 #(parameter N = 16)
 (
     output logic unsigned [N-1:0] maxValue,
@@ -175,8 +391,8 @@ endmodule
 module FindMax120Approx // TODO This is at the very least moderately hideous. Could probably make a recursive one that operates on 2^n sizes and assume the rest is synthesized away.
 #(parameter N = 16)
 (
-    output logic unsigned [N-1:0] maxValue,
-    input logic unsigned [N-1:0] values [0:119]
+    output logic unsigned [N-1:0] maxValue, // an approximation of the biggest value on the inputs (see notes above)
+    input logic unsigned [N-1:0] values [0:119] // the input values to search in
 );
     assign maxValue = values[0] | values[1] | values[2] | values[3] | values[4] | values[5] | values[6] | values[7] | values[8] | values[9] | values[10] | values[11] | values[12] | values[13] | values[14] | values[15] |
         values[16] | values[17] | values[18] | values[19] | values[20] | values[21] | values[22] | values[23] | values[24] | values[25] | values[26] | values[27] | values[28] | values[29] | values[30] | values[31] |
@@ -190,12 +406,15 @@ endmodule
 
 // FPW must be at least $clog2(BPO).
 // Increasing FPF above N does not yield better precision.
+// This looks at the bin to the left and right, and compares their relative content, as well as to the target bin content, to figure out where inside of our bin the peak should be placed
+// For example, if there is large content to the left and little to the right, we can assume the peak is located partially to the left, but still within this bin
+// THis module assumes that the center IS a peak, and will produce garbage output if the central 'here' input is in fact not a peak
 module PeakPlacer
 #(parameter N = 16, parameter BPO = 24, parameter FPW = 5, parameter FPF = 10)
 (
     output logic [(FPW+FPF)-1:0] peakPosition, // between 0 (inc) and BPO (exc)
     input logic [$clog2(BPO)-1:0] binIndex, // between 0 and BPO-1
-    input logic [N-1:0] left, right, here
+    input logic [N-1:0] left, right, here // the adjacent bin values in order to appropriately position where the peak is within our bin
 );
     logic [N-1:0] DiffL, DiffR, TotalAdjacentDiff;
     logic [(N*2)-1:0] PropDiffL, PropDiffR;
@@ -302,6 +521,26 @@ module PeakRegister
             end
         end
 endmodule
+
+
+// NOTE: only valid gets set to 0 on reset, position and amplitude remain undefined
+module NoteRegister
+(
+    output Note out,
+    input Note in,
+    input logic write,
+    input logic clk, rst
+);
+    always_ff @(posedge clk)
+        if(rst) out.valid <= '0;
+        else if(write)
+        begin
+            out.position <= in.position;
+            out.amplitude <= in.amplitude;
+            out.valid <= in.valid;
+        end
+endmodule
+
 
 module NoteOperationManager
 #(parameter OCT = 5)
