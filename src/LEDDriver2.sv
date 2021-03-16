@@ -2,7 +2,8 @@ module LEDDriver2 #(
     parameter LEDS  = 50,                   // number of LEDs being drivern
     parameter FREQ  = 12_500_000,           // clk frequency
     parameter BIN_QTY = 12,
-    parameter FREQ_DIV = 4
+    parameter FREQ_DIV = 4,
+    parameter WaitMultiplier = 2
 ) (
     output logic dOut, clkOut,              // outputs to LED
     output logic done,                      // comms output to visualizer
@@ -13,7 +14,7 @@ module LEDDriver2 #(
     input logic clk, rst                   // standard inputs
 );
 
-    localparam waitCntrSize = $clog2(FREQ/2000); // 0.5~1 ms wait
+    localparam waitCntrSize = $clog2(FREQ/2000) + WaitMultiplier - 1; // 0.5~1 ms *2 ^ * WaitMultiplier - 1) 
     localparam FD_LOG = $clog2(FREQ_DIV);
 
     logic [BIN_QTY - 1 : 0][23 : 0] rgbRegistered;
@@ -80,14 +81,14 @@ module LEDDriver2 #(
                     Color <= rgbRegistered[BinCntr];
                     LEDCountsRegistered[BinCntr] <= LEDCountsRegistered[BinCntr] - 1;
                     if (ps == LOAD_S) ColorCount <= ColorCount - 1;
-                    if (LEDCountsRegistered[BinCntr] <= 1) BinCntr <= BinCntr + 1;
+                    if (LEDCountsRegistered[BinCntr] < 2) BinCntr <= BinCntr + 1;
                     SerialCntr <= {5'd23,{FD_LOG{1'b1}}};
 
                     // ensures 50 LEDs are always filled
                     if (BinCntr == (BIN_QTY - 1)) begin 
                         BinCntr <= BinLast;
                         Color <= rgbRegistered[BinLast];
-                        LEDCountsRegistered[BinLast] = ColorCount;
+                        LEDCountsRegistered[BinLast] <= ColorCount;
                     end
 
                 end

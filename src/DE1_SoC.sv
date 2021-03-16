@@ -123,7 +123,8 @@ module DE1_SoC (HEX0, HEX1, HEX2, HEX3, HEX4, HEX5, KEY, LEDR, SW, GPIO_0, CLOCK
 	);
 
 	LEDDriver2 #(
-		.FREQ_DIV(4)
+		.FREQ_DIV(4),				// how many times slower is the output driver compared to the system clock
+		.WaitMultiplier(2)			// wait period = 500us * 2 ^ WaitMultiplier - 1
 		) ld_u (
 		.dOut    (dOut      ),
 		.clkOut  (clkOut    ),
