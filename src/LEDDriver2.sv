@@ -9,6 +9,7 @@ module LEDDriver2 #(
 ) (
     output logic dOut, clkOut,              // outputs to LED
     output logic done,                      // comms output to visualizer
+    output logic unsigned [$clog2(LEDS) - 1 : 0] ColorCount,
 
     input logic [BIN_QTY - 1 : 0][23 : 0] rgb,
     input logic [BIN_QTY - 1 : 0][$clog2(LEDS) - 1 : 0] LEDCounts,
@@ -29,7 +30,7 @@ module LEDDriver2 #(
     logic unsigned [$clog2(BIN_QTY) - 1 : 0] BinLast;
 
     logic [23 : 0] Color;
-    logic unsigned [$clog2(LEDS) - 1 : 0] ColorCount;
+    //logic unsigned [$clog2(LEDS) - 1 : 0] ColorCount;
 
     logic data_v;
 

@@ -11,7 +11,8 @@ module part1
 	output logic [6:0] HEX0, HEX1, HEX2, HEX3, HEX4, HEX5,
 	input logic [9:0] SW,
 	input logic [3:0] KEY, 
-	input logic CLOCK_50, CLOCK2_50
+	input logic CLOCK_50, CLOCK2_50,
+	inout logic [35:0] GPIO_0
 );
 	wire reset = ~KEY[0];
 
@@ -39,7 +40,9 @@ module part1
 	logic SampleReadRaw; // TODO: This signal is high for 1 clock cycle at 12.5MHz, but this is more than 1 cycle at 50MHz, which the audio system uses! We may miss samples!
 	assign read = SampleReadRaw;
 
-	ColorChordTop CCHW(.peaksForDebug(NFPeaks), .doingRead(SampleReadRaw), .inputSample, .sampleReady(read_ready), .clk(clk_12M5), .rst(reset || !locked));
+	logic [10:0] debugSignals;
+
+	ColorChordTop CCHW(.peaksForDebug(NFPeaks), .debugSignals, .ledData(GPIO_0[18]), .ledClock(GPIO_0[19]), .doingRead(SampleReadRaw), .inputSample, .sampleReady(read_ready), .clk(clk_12M5), .rst(reset || !locked));
 	
 	// Visual outputs
 	logic [9:0] InputAbsTrim; // trimmed, absolute value of input audio, to get an idea of input amplitude
@@ -47,13 +50,14 @@ module part1
 	begin
 		if(rawInput[23]) InputAbsTrim = -rawInput[23:14];
 		else InputAbsTrim = rawInput[23:14];
-		LEDR = { InputAbsTrim[0] /* Notes[0].position[10]*/, InputAbsTrim[1], InputAbsTrim[2], InputAbsTrim[3], InputAbsTrim[4], InputAbsTrim[5], InputAbsTrim[6], InputAbsTrim[7], InputAbsTrim[8], InputAbsTrim[9] };
+		//LEDR = { InputAbsTrim[0] /* Notes[0].position[10]*/, InputAbsTrim[1], InputAbsTrim[2], InputAbsTrim[3], InputAbsTrim[4], InputAbsTrim[5], InputAbsTrim[6], InputAbsTrim[7], InputAbsTrim[8], InputAbsTrim[9] };
+		LEDR = debugSignals[10:1];
 		HEX0 = {1'b1, {2{~NFPeaks[10]}}, 1'b1, {2{~NFPeaks[11]}}, 1'b1};
 		HEX1 = {1'b1, {2{~NFPeaks[8]}}, 1'b1, {2{~NFPeaks[9]}}, 1'b1};
 		HEX2 = {1'b1, {2{~NFPeaks[6]}}, 1'b1, {2{~NFPeaks[7]}}, 1'b1};
 		HEX3 = {1'b1, {2{~NFPeaks[4]}}, 1'b1, {2{~NFPeaks[5]}}, 1'b1};
 		HEX4 = {1'b1, {2{~NFPeaks[2]}}, 1'b1, {2{~NFPeaks[3]}}, 1'b1};
-		HEX5 = {1'b1, {2{~NFPeaks[0]}}, 1'b1, {2{~NFPeaks[1]}}, 1'b1};
+		HEX5 = {debugSignals[0], {2{~NFPeaks[0]}}, 1'b1, {2{~NFPeaks[1]}}, 1'b1};
 	end
 
 	// Synchronizers for switch inputs
