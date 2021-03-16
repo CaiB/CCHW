@@ -21,16 +21,16 @@ module LEDDriver2 #(
     localparam FD_LOG = $clog2(FREQ_DIV);
 
     logic [BIN_QTY - 1 : 0][23 : 0] rgbRegistered;
-    logic [BIN_QTY - 1 : 0][$clog2(LEDS) - 1 : 0] LEDCountsRegistered;
+    logic unsigned [BIN_QTY - 1 : 0][$clog2(LEDS) - 1 : 0] LEDCountsRegistered;
 
-    logic [waitCntrSize - 1 : 0] WaitCntr;
-    logic [$clog2(BIN_QTY) - 1 : 0] BinCntr;
-    logic [5 + FD_LOG : 0] SerialCntr;
+    logic unsigned [waitCntrSize - 1 : 0] WaitCntr;
+    logic unsigned [$clog2(BIN_QTY) - 1 : 0] BinCntr;
+    logic unsigned [5 + FD_LOG : 0] SerialCntr;
 
-    logic [$clog2(BIN_QTY) - 1 : 0] BinLast;
+    logic unsigned [$clog2(BIN_QTY) - 1 : 0] BinLast;
 
     logic [23 : 0] Color;
-    logic [$clog2(LEDS) - 1 : 0] ColorCount;
+    logic unsigned [$clog2(LEDS) - 1 : 0] ColorCount;
 
     logic data_v;
 
@@ -73,22 +73,34 @@ module LEDDriver2 #(
 
             case (ns)
                 WAIT_S: begin
+                    // increment the ocunter
                     WaitCntr <= WaitCntr + 1;
-                    rgbRegistered <= rgb;
-                    LEDCountsRegistered <= LEDCounts;
+                    
+                    // load the the new input values
+                    if (start) rgbRegistered <= rgb;
+                    if (start) LEDCountsRegistered <= LEDCounts;
+
+                    // set values to their defaults
                     ColorCount <= LEDS;
+                    BinLast <= '0;
                     BinCntr <= '0;
                 end
                 CNTR_S: begin
                     WaitCntr <= '0;
+
+                    // load the correct color, reduce the current count of required LEDs and preset the load counter 
                     Color <= rgbRegistered[BinCntr];
                     LEDCountsRegistered[BinCntr] <= LEDCountsRegistered[BinCntr] - 1;
-                    if (ps == LOAD_S) ColorCount <= ColorCount - 1;
-                    if (LEDCountsRegistered[BinCntr] < 2) BinCntr <= BinCntr + 1;
                     SerialCntr <= {5'd23,{FD_LOG{1'b1}}};
 
+                    // if a load just complete decrement the total # of LEDs left
+                    if (ps == LOAD_S) ColorCount <= ColorCount - 1;
+
+                    // if it the count is empty (0) or dropped to 1 move to the next bin
+                    if (LEDCountsRegistered[BinCntr] < 2) BinCntr <= BinCntr + 1;
+
                     // ensures 50 LEDs are always filled
-                    if (BinCntr == (BIN_QTY - 1)) begin 
+                    if (BinCntr >= (BIN_QTY - 1)) begin
                         BinCntr <= BinLast;
                         Color <= rgbRegistered[BinLast];
                         LEDCountsRegistered[BinLast] <= ColorCount;
@@ -96,11 +108,13 @@ module LEDDriver2 #(
 
                 end
                 LOAD_S: begin
-                    // save the most recently used color and bin
+                    // save the most recently used bin
                     BinLast <= BinCntr;
 
                     // set output clock to valid
                     data_v <= '1;
+
+                    // use the bits above the frequency divider bits to compute dOut
                     dOut <= Color[SerialCntr[5 + FD_LOG : FD_LOG]];
                     SerialCntr <= SerialCntr - 1;
                 end
@@ -108,8 +122,9 @@ module LEDDriver2 #(
         end
     end
 
+    // write data on the negative edge of the clock after valid went high
     assign clkOut = data_v & ~SerialCntr[FD_LOG-1];
-    assign done = ps == WAIT_S;
+    assign done = (ps == WAIT_S);
 
 endmodule
 
