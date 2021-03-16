@@ -5,6 +5,7 @@ import CCHW::*;
 // You should assume notes are completely randomly scattered throughout the array.
 // However, between input cycles, notes in the same position in the array are meant to be smoothly interpreted.
 // So if a note is present in slot 6, and a note is present in the next cycle in slot 6, it should be treated as the same note, however with updated position and amplitude info.
+// Note also that there is infinite potential for note puns in this file's comments :)
 module NoteFinder
 #(parameter N = 16, parameter BPO = 24, parameter OCT = 5, parameter BINS = OCT*BPO)
 (
