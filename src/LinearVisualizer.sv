@@ -1,4 +1,3 @@
-include Common.sv;
 import CCHW::*;
 
 module LinearVisualizer #(
@@ -23,8 +22,9 @@ module LinearVisualizer #(
     output logic [BIN_QTY - 1 : 0][23 : 0] rgb,
     output logic [BIN_QTY - 1 : 0][$clog2(LEDS) - 1 : 0] LEDCounts,
     output logic data_v,                     // comms input from visualizer
+    output logic ampPreprocessorDone, LEDCountDone,
     
-    input Note [BIN_QTY - 1 : 0] notes,
+    input Note notes [BIN_QTY - 1 : 0],
     input logic start,
     input logic clk, rst
 );
@@ -42,8 +42,8 @@ module LinearVisualizer #(
     logic [BIN_QTY - 1 : 0][W + D - 1 : 0] amplitudes, amplitudesFast;
     logic [W + D - 1 + $clog2(BIN_QTY): 0] amplitudeSum;
     logic [BIN_QTY - 1 : 0][D - 1 : 0] hues;
-    logic ampPreprocessorDone;              
-    logic LEDCountDone;                     
+    //logic ampPreprocessorDone;              
+    //logic LEDCountDone;                     
     logic [BIN_QTY - 1 : 0] hueCalcDones;   
     logic [BIN_QTY - 1 : 0] colorCalcDones; 
 
@@ -149,7 +149,7 @@ module LinearVisualizer #(
         end
     endgenerate
 
-    assign data_v = {colorCalcDones, LEDCountDone};
+    assign data_v = &{colorCalcDones, LEDCountDone};
 
 endmodule
 

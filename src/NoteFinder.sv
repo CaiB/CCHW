@@ -564,7 +564,7 @@ endmodule
 
 // Given 120 numbers of width N, outputs the highest among all of them. This one is a lot faster, jankier, and less precise.
 // Inputting a worst-case peak of a 1 bit followed by all 0 bits, this could at maximum output that same starting 1 bit, followed by all ones, effectively doubling the peak value.
-// Inputting a best casxe peak value of some number of 0 bits followed by contiguous 1 bits, this will output the precise peak
+// Inputting a best case peak value of some number of 0 bits followed by contiguous 1 bits, this will output the precise peak
 // Chances are that it'll usually be pretty close, since there is often more than 1 reasonably large peak, and as such most of the bits under the main peaks' leading 1 will be filled with 1s
 // Therefore it's safe to assume the output is about 1.5-2.0x as large as the largest peak
 module FindMax120Approx // TODO This is at the very least moderately hideous. Could probably make a recursive one that operates on 2^n sizes and assume the rest is synthesized away.
