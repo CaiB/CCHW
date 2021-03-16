@@ -1,4 +1,5 @@
 module HueCalc #(
+    parameter W = 6,
     parameter D = 10,
     parameter BinsPerOctave  = 24,
 
@@ -9,11 +10,9 @@ module HueCalc #(
     output logic [D - 1 : 0] noteHue_o,
     output logic data_v,
 
-    input logic [D - 1 : 0] notePosition_i,
+    input logic [W + D - 1 : 0] notePosition_i,
     input logic start, clk, rst
 );
-
-    parameter W = $clog2(BinsPerOctave);
 
     // propogates the start signal
     logic [3:0] valid_delay;
@@ -27,7 +26,7 @@ module HueCalc #(
 
     always_comb begin
         // cycle 1
-        note = notePosition_i * BinsPerOctave;
+        note = notePosition_i;                      // originally was a multiplication
         if (note < 8192)       comparator = 3'b001;
         else if (note < 16384) comparator = 3'b010;
         else                   comparator = 3'b100;
@@ -61,7 +60,7 @@ module HueCalc #(
             noteSub_d1 <= noteSub;
 
             // bit range max is the concatenation of the bit range maximums of each signal multiplied and 9 less than that
-            noteMult_d1 <= noteMult[5 + D + W + D - 1 : 5 + D + W + D - 10]; // take the top 10 bits of the result
+            noteMult_d1 <= noteMult[4 + D + W + D - 1 : 4 + D + W + D - 10]; // take the top 10 bits of the result
 
             valid_delay <= {valid_delay[2:0], start};
         end
@@ -70,6 +69,7 @@ module HueCalc #(
 endmodule
 
 module HueCalc_testbench();
+    parameter W = 6;
     parameter D = 10;
     parameter BinsPerOctave  = 24;
     parameter TB_PERIOD = 100ns;
@@ -81,7 +81,7 @@ module HueCalc_testbench();
     logic [D - 1 : 0] noteHue_o;
     logic data_v;
 
-    logic [D - 1 : 0] notePosition_i;
+    logic [W + D - 1 : 0] notePosition_i;
     logic start, clk, rst;
 
     // clock setup
@@ -111,19 +111,7 @@ module HueCalc_testbench();
 
         start = '1;
 
-        notePosition_i = 10'b0110001000;
-
-        @(posedge clk);
-        @(posedge clk);
-        wait(data_v);
-
-        notePosition_i = 10'b1011001001;
-
-        @(posedge clk);
-        @(posedge clk);
-        wait(data_v);
-
-        notePosition_i = 10'b0110100111;
+        notePosition_i = 10'b0100001100 * 24;
 
         @(posedge clk);
         @(posedge clk);

@@ -1,3 +1,6 @@
+include Common.sv;
+import CCHW::*;
+
 module LinearVisualizer #(
     parameter W = 6,                        // max whole value 63
     parameter D = 10,                       // decimal precision to ~.001
@@ -21,26 +24,53 @@ module LinearVisualizer #(
     output logic [BIN_QTY - 1 : 0][$clog2(LEDS) - 1 : 0] LEDCounts,
     output logic data_v,                     // comms input from visualizer
     
-    input logic [BIN_QTY - 1 : 0][W + D - 1 : 0] noteAmplitudes,
-    input logic [BIN_QTY - 1 : 0][W + D - 1 : 0] notePositions,
+    input Note [BIN_QTY - 1 : 0] notes,
     input logic start,
     input logic clk, rst
 );
 
     genvar i, j;
+    integer k;
 
+    // internal registered versions of the inputs
+    Note [BIN_QTY - 1 : 0] notes_i;
+    logic start_i;
+
+    logic [BIN_QTY - 1 : 0][W + D - 1 : 0] amplitudesArray;
+
+    // glue logic between instantiations
     logic [BIN_QTY - 1 : 0][W + D - 1 : 0] amplitudes, amplitudesFast;
     logic [W + D - 1 + $clog2(BIN_QTY): 0] amplitudeSum;
     logic [BIN_QTY - 1 : 0][D - 1 : 0] hues;
-    
-    logic ampPreprocessorDone;                  // not currently used
-    logic LEDCountDone;                         // not currently used
-    logic [BIN_QTY - 1 : 0] hueCalcDones;       // not currently used
-    logic [BIN_QTY - 1 : 0] colorCalcDones;     // not currently used
+    logic ampPreprocessorDone;              
+    logic LEDCountDone;                     
+    logic [BIN_QTY - 1 : 0] hueCalcDones;   
+    logic [BIN_QTY - 1 : 0] colorCalcDones; 
 
     logic p2_start;
 
     // -----------------------------  PHASE 1 LOGIC   -----------------------------
+
+
+    
+
+    // register and hold the note values whenever start is true
+    always_ff @(posedge clk) begin
+        if (rst) begin
+            notes_i <= '0;
+            start_i <= '0;
+        end
+
+        else if (start) begin
+            for (k = 0; k < BIN_QTY; k++) begin
+                notes_i[k].position <= notes[k].position;
+                notes_i[k].amplitude <= notes[k].valid ? notes[k].amplitude : '0;
+                amplitudesArray[k] <= notes_i[k].amplitude;
+                notes_i[k].valid <= '1;
+                start_i <= '1;
+            end
+        end
+    end
 
     // computes the relative amplitudes and their sum
     AmpPreprocessor #(
@@ -53,8 +83,8 @@ module LinearVisualizer #(
         .noteAmplitudesFast_o   (amplitudesFast         ),
         .amplitudeSumNew_o      (amplitudeSum           ),
         .data_v                 (ampPreprocessorDone    ),
-        .noteAmplitudes_i       (noteAmplitudes         ),
-        .start                  (start                  ),
+        .noteAmplitudes_i       (amplitudesArray        ),
+        .start                  (start_i                ),
         .clk                    (clk                    ),
         .rst                    (rst                    )
     );
@@ -66,12 +96,12 @@ module LinearVisualizer #(
                 .D(D),
                 .BinsPerOctave(BIN_QTY*2)
             ) binHueCalc_u (
-                .noteHue_o      (hues[i]         ),
-                .data_v         (hueCalcDones[i] ),
-                .notePosition_i (notePositions[i][D - 1 : 0]),  // only the decimal component
-                .start          (start           ),
-                .clk            (clk             ),
-                .rst            (rst             )
+                .noteHue_o      (hues[i]            ),
+                .data_v         (hueCalcDones[i]    ),
+                .notePosition_i (notes_i[i].position),  // only the decimal component
+                .start          (start_i            ),
+                .clk            (clk                ),
+                .rst            (rst                )
             );
         end
     endgenerate
@@ -144,8 +174,7 @@ module LinearVisualizer_testbench();
     logic [BIN_QTY - 1 : 0][$clog2(LEDS) - 1 : 0] LEDCounts;
     logic data_v;
     
-    logic [BIN_QTY - 1 : 0][W + D - 1 : 0] noteAmplitudes;
-    logic [BIN_QTY - 1 : 0][W + D - 1 : 0] notePositions;
+    Note [BIN_QTY - 1 : 0] notes;
     logic start;
     logic clk, rst;
 
@@ -174,8 +203,7 @@ module LinearVisualizer_testbench();
         .rgb            (rgb            ),
         .LEDCounts      (LEDCounts      ),
         .data_v         (data_v         ),
-        .noteAmplitudes (noteAmplitudes ),
-        .notePositions  (notePositions  ),
+        .notes          (notes          ),
         .start          (start          ),
         .clk            (clk            ),
         .rst            (rst            )
@@ -204,8 +232,9 @@ module LinearVisualizer_testbench();
             start = 1;
 
             for (i = 0; i < BIN_QTY; i++) begin
-                noteAmplitudes[i] = amplitudes[i];
-                notePositions[i] = positions[i];
+                notes[i].amplitude = amplitudes[i];
+                notes[i].position = 24 * positions[i];
+                notes[i].valid = '1;
             end
 
             repeat(10) @(posedge clk);
