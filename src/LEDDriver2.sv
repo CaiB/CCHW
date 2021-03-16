@@ -51,7 +51,7 @@ module LEDDriver2 #(
             WAIT_S: if (&WaitCntr & start)                  ns = CNTR_S;
                     else                                    ns = ps;
             CNTR_S: if (ColorCount == 0)                    ns = WAIT_S;
-                    else if (rgbRegistered[BinCntr] == 0)   ns = CNTR_S;
+                    else if (LEDCountsRegistered[BinCntr] == 0)   ns = CNTR_S;
                     else                                    ns = LOAD_S;
             LOAD_S: if (&SerialCntr)                        ns = CNTR_S;
                     else                                    ns = ps;
@@ -88,16 +88,18 @@ module LEDDriver2 #(
                 CNTR_S: begin
                     WaitCntr <= '0;
 
-                    // load the correct color, reduce the current count of required LEDs and preset the load counter 
+                    // load the correct color and preset the load counter 
                     Color <= rgbRegistered[BinCntr];
-                    LEDCountsRegistered[BinCntr] <= LEDCountsRegistered[BinCntr] - 1;
                     SerialCntr <= {5'd23,{FD_LOG{1'b1}}};
 
-                    // if a load just complete decrement the total # of LEDs left
-                    if (ps == LOAD_S) ColorCount <= ColorCount - 1;
+                    // if a load just complete decrement the total # of LEDs left in the main counter and in the current bin
+                    if (ps == LOAD_S) begin 
+                        ColorCount <= ColorCount - 1;
+                        LEDCountsRegistered[BinCntr] <= LEDCountsRegistered[BinCntr] - 1;
+                    end
 
-                    // if it the count is empty (0) or dropped to 1 move to the next bin
-                    if (LEDCountsRegistered[BinCntr] < 2) BinCntr <= BinCntr + 1;
+                    // if it the count is empty (0) move to the next bin
+                    if (LEDCountsRegistered[BinCntr] == 0) BinCntr <= BinCntr + 1;
 
                     // ensures 50 LEDs are always filled
                     if (BinCntr >= (BIN_QTY - 1)) begin
@@ -105,7 +107,6 @@ module LEDDriver2 #(
                         Color <= rgbRegistered[BinLast];
                         LEDCountsRegistered[BinLast] <= ColorCount;
                     end
-
                 end
                 LOAD_S: begin
                     // save the most recently used bin
@@ -189,6 +190,8 @@ module LEDDriver2_testbench();
 
         testInputs({'0, 6'd10, 6'd10, 6'd10},{'0,24'hAAAAAA, 24'hF0F0F0F0, 24'hFFFFFF});
         testInputs({'0, 6'd10, 6'd10, 6'd10},{'0,24'hAAAAAA, 24'hF0F0F0F0, 24'hFFFFFF});
+        //testInputs({'0},{'0});
+        //testInputs({'0},{'0});
 
         $stop();
     end
