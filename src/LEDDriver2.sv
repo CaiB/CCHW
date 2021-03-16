@@ -1,3 +1,6 @@
+include Common.sv;
+import CCHW::*;
+
 module LEDDriver2 #(
     parameter LEDS  = 50,                   // number of LEDs being drivern
     parameter FREQ  = 12_500_000,           // clk frequency
@@ -199,8 +202,7 @@ module LV_Driver_testbench();
     logic dOut, clkOut;
     logic [BIN_QTY - 1 : 0][23 : 0] rgb;
     logic [BIN_QTY - 1 : 0][$clog2(LEDS) - 1 : 0] LEDCounts;
-    logic [BIN_QTY - 1 : 0][W + D - 1 : 0] noteAmplitudes;
-    logic [BIN_QTY - 1 : 0][W + D - 1 : 0] notePositions;
+    Note [BIN_QTY - 1 : 0] notes;
 
     logic ld_done, lv_dv;
     logic lv_start;
@@ -238,8 +240,7 @@ module LV_Driver_testbench();
         .rgb            (rgb            ),
         .LEDCounts      (LEDCounts      ),
         .data_v         (lv_dv          ),
-        .noteAmplitudes (noteAmplitudes ),
-        .notePositions  (notePositions  ),
+        .notes          (notes          ),
         .start          (lv_start       ),
         .clk            (clk            ),
         .rst            (rst            )
@@ -270,15 +271,17 @@ module LV_Driver_testbench();
     task runCycle(input logic [W + D - 1 : 0] amplitudes [BIN_QTY - 1 : 0],
                   input logic [W + D - 1 : 0] positions [BIN_QTY - 1 : 0]);
         begin
-            lv_start = '1;
+            lv_start = 1;
 
             for (i = 0; i < BIN_QTY; i++) begin
-                noteAmplitudes[i] = amplitudes[i];
-                notePositions[i] = positions[i];
+                notes[i].amplitude = amplitudes[i];
+                notes[i].position = 24 * positions[i];
+                notes[i].valid = '1;
             end
-            //wait(lv_dv);
+
             wait(!ld_done);
             wait(ld_done);
+            lv_start = 0;
         end
     endtask
 

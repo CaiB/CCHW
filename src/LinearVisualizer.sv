@@ -233,7 +233,7 @@ module LinearVisualizer_testbench();
 
             for (i = 0; i < BIN_QTY; i++) begin
                 notes[i].amplitude = amplitudes[i];
-                notes[i].position = 24 * positions[i];
+                notes[i].position = 24 *positions[i];
                 notes[i].valid = '1;
             end
 
