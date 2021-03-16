@@ -53,10 +53,10 @@ module ColorChordTop
     logic StartLEDDriver;
     logic [11:0][23:0] RGBData;
     logic [11:0][$clog2(LED_QTY)-1:0] LEDCounts;
-    // TODO add visualizer
+
+    LinearVisualizer lv_u (.rgb(RGBData), .LEDCounts(LEDCounts), .data_v(StartLEDDriver), .notes(notes), .start(NoteFinderFinished), .clk, .rst);
 
     // ==== LED Driver ====
     logic LEDOutputDone;
-    // TODO check connections
-    LEDDriver2 #(.FREQ_DIV(LED_FREQ_DIV), .WaitMultiplier(LED_WAIT_MULT), .LEDS(LED_QTY)) OutDriver(.dOut(ledData), .clkOut(ledClock), .done(LEDOutputDone), .rgb(RGBData), .LEDCounts, .start(StartLEDDriver), .clk, .rst);
+    LEDDriver2 #(.FREQ_DIV(LED_FREQ_DIV), .WaitMultiplier(LED_WAIT_MULT), .LEDS(LED_QTY)) OutDriver(.dOut(ledData), .clkOut(ledClock), .done(LEDOutputDone), .rgb(RGBData), .LEDCounts(LEDCounts), .start(StartLEDDriver), .clk, .rst);
 endmodule
