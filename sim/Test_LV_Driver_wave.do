@@ -16,15 +16,15 @@ add wave -noupdate -expand -group Driver -radix unsigned /Test_LV_Driver/DUT/ld_
 add wave -noupdate -expand -group Driver /Test_LV_Driver/DUT/ld_u/Color
 add wave -noupdate -expand -group Visualizer /Test_LV_Driver/DUT/lv_u/notes
 add wave -noupdate {/Test_LV_Driver/DUT/lv_u/hue_proc[0]/binHueCalc_u/notePosition_i}
-add wave -noupdate {/Test_LV_Driver/DUT/lv_u/hue_proc[0]/binHueCalc_u/noteHue_o}
+add wave -noupdate -radix unsigned {/Test_LV_Driver/DUT/lv_u/hue_proc[0]/binHueCalc_u/noteHue_o}
 add wave -noupdate {/Test_LV_Driver/DUT/lv_u/hue_proc[1]/binHueCalc_u/notePosition_i}
-add wave -noupdate {/Test_LV_Driver/DUT/lv_u/hue_proc[1]/binHueCalc_u/noteHue_o}
+add wave -noupdate -radix unsigned {/Test_LV_Driver/DUT/lv_u/hue_proc[1]/binHueCalc_u/noteHue_o}
 add wave -noupdate {/Test_LV_Driver/DUT/lv_u/hue_proc[2]/binHueCalc_u/notePosition_i}
-add wave -noupdate {/Test_LV_Driver/DUT/lv_u/hue_proc[2]/binHueCalc_u/noteHue_o}
-add wave -noupdate {/Test_LV_Driver/DUT/lv_u/hue_proc[3]/binHueCalc_u/data_v}
+add wave -noupdate -radix decimal {/Test_LV_Driver/DUT/lv_u/hue_proc[2]/binHueCalc_u/noteHue_o}
+add wave -noupdate {/Test_LV_Driver/DUT/lv_u/hue_proc[3]/binHueCalc_u/notePosition_i}
 add wave -noupdate {/Test_LV_Driver/DUT/lv_u/hue_proc[3]/binHueCalc_u/noteHue_o}
 TreeUpdate [SetDefaultTree]
-WaveRestoreCursors {{Cursor 1} {2079194131 ps} 0}
+WaveRestoreCursors {{Cursor 1} {2078965898 ps} 0}
 quietly wave cursor active 1
 configure wave -namecolwidth 150
 configure wave -valuecolwidth 100
@@ -40,4 +40,4 @@ configure wave -griddelta 40
 configure wave -timeline 0
 configure wave -timelineunits ps
 update
-WaveRestoreZoom {2078370354 ps} {2084927877 ps}
+WaveRestoreZoom {2078370354 ps} {2083213235 ps}

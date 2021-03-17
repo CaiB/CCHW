@@ -7,14 +7,14 @@
 */
 
 module AmpPreprocessor #(
-    parameter W = 6,                        // number of whole bits in the fixed point format
-    parameter D = 10,                       // number of decimal  bits in the fixed point format - precision to ~.001
+    parameter W = 5,                        // number of whole bits in the fixed point format
+    parameter D = 11,                       // number of decimal  bits in the fixed point format - precision to ~.001
     parameter BIN_QTY  = 12,                // number of independant amplitudes being processed
 
     // =============== Fixed Point Specific Parameters ===============
     // The following parameters are computed based on the above parameters W and D. 
     // See LinearVisualizer.sv : line 24 for instruction on how to recompute
-    parameter LEDFloor = 'b0001100110       // 0.0996... ~ 102 ~ 0001100110 - sets the relative threshold value for amplitudes to be considered 
+    parameter LEDFloor = 205                // 0.100... ~ 205 ~ 00011001101 - sets the relative threshold value for amplitudes to be considered 
 ) (
     output logic [BIN_QTY - 1 : 0][W + D - 1 : 0] noteAmplitudes_o,     // original amplitudes but reduced and filtered
     output logic [BIN_QTY - 1 : 0][W + D - 1 : 0] noteAmplitudesFast_o, // original amplitudes but filtered

@@ -19,8 +19,8 @@ import CCHW::*;
 */
 
 module LinearVisualizer #(
-    parameter W = 6,                        // number of whole bits in the fixed point format
-    parameter D = 10,                       // number of decimal  bits in the fixed point format - precision to ~.001
+    parameter W = 5,                        // number of whole bits in the fixed point format
+    parameter D = 11,                       // number of decimal  bits in the fixed point format - precision to ~.001
     parameter LEDS  = 50,                   // number of LEDs being driven
     parameter BIN_QTY = 12,                 // number of independant notes being processed
 
@@ -35,12 +35,13 @@ module LinearVisualizer #(
     // binary value. The top bits are used as normal if there is a whole number component. The integer
     // representation of this binary number should be used to set the parameter
 
-    parameter LEDFloor = 102,               // 0.0996... ~ 102 ~ 0001100110 - sets the relative threshold value for amplitudes to be considered 
-    parameter LEDLimit = 1023,              // ~1.0 ~ 1023 ~ 1111111111 - sets the final hue amplitude upper limit 
-    parameter SaturationAmplifier = 1638,   // 1.599.. ~ 1638 ~ 1_1111000000 - scales the hue amplitude up to the LEDLimit
-    parameter yellowToRedSlope  = 21824,    // 21.3125 ~  21824 ~  'b10101_0101000000 ~ 1/48 of hue range (1024) - a slope of the "circular" piecewsie hue mapper
-    parameter redToBlueSlope    = 43648,    // 42.625  ~  41600 ~ 'b101010_1010000000 ~ 1/24 of hue range (1024) - a slope of the "circular" piecewise hue mapper
-    parameter blueToYellowSlope = 65472     // 63.9375 ~ 130944 ~ 'b111111_1111000000 ~ 1/16 of hue range (1024) - a slope of the "circular" piecewise hue mapper
+    parameter LEDFloor = 205,               // 0.100... ~ 205 ~ 00011001101 - sets the relative threshold value for amplitudes to be considered 
+    parameter LEDLimit = 2047,              // ~1.0 ~ 2047 ~ 11111111111 - sets the final hue amplitude upper limit 
+    parameter SaturationAmplifier = 3277,   // 1.6000.. ~ 3277 ~ 1_10011001101 - scales the hue amplitude up to the LEDLimit
+    parameter LEDS_X = 41,                  // 0.02001.. ~ 41 ~ 00000101001 - inverse of LEDS
+    parameter yellowToRedSlope  = 43648,    // 21.3125 ~  43648 ~  'b10101_01010000000 ~ 1/48 of hue range (1024) - a slope of the "circular" piecewsie hue mapper
+    parameter redToBlueSlope    = 87296,    // 42.625  ~  87296 ~ 'b101010_10100000000 ~ 1/24 of hue range (1024) - a slope of the "circular" piecewise hue mapper
+    parameter blueToYellowSlope = 130944     // 63.9375 ~ 130944 ~ 'b111111_11110000000 ~ 1/16 of hue range (1024) - a slope of the "circular" piecewise hue mapper
 ) (
     output logic [BIN_QTY - 1 : 0][23 : 0] rgb,                     // array of unique color words
     output logic [BIN_QTY - 1 : 0][$clog2(LEDS) - 1 : 0] LEDCounts, // numbers of words associated with the colors
@@ -64,7 +65,7 @@ module LinearVisualizer #(
     // =============== wire logic between modules in phase 1 and 2 ===============
     logic [BIN_QTY - 1 : 0][W + D - 1 : 0] amplitudes, amplitudesFast;
     logic [W + D - 1 + $clog2(BIN_QTY): 0] amplitudeSum;
-    logic [BIN_QTY - 1 : 0][D - 1 : 0] hues;
+    logic [BIN_QTY - 1 : 0][D - 2 : 0] hues;
 
     // =============== done signals from all instantiated modules ===============
     logic ampPreprocessorDone;              
@@ -114,6 +115,7 @@ module LinearVisualizer #(
     generate
         for (i = 0; i < BIN_QTY; i++) begin : hue_proc
             HueCalc #(
+                .W(W),
                 .D(D),
                 .BinsPerOctave(BIN_QTY*2)
             ) binHueCalc_u (
@@ -138,6 +140,7 @@ module LinearVisualizer #(
         .W      (W      ),
         .D      (D      ),
         .LEDS   (LEDS   ),
+        .LEDS_X (LEDS_X ),
         .BIN_QTY(BIN_QTY)
     ) dut (
         .LEDCount           (LEDCounts   ),
@@ -155,9 +158,9 @@ module LinearVisualizer #(
             ColorCalc #(
                 .W(W),
                 .D(D),
-                .SaturationAmplifier(1638),
-                .LEDLimit(1023),
-                .steadyBright('0)
+                .SaturationAmplifier(SaturationAmplifier),
+                .LEDLimit(LEDLimit),
+                .steadyBright(steadyBright)
             ) binColorCalc_u (
                 .rgb                (rgb[j]           ),
                 .data_v             (colorCalcDones[j]),

@@ -11,15 +11,15 @@
 */
 
 module ColorCalc #(
-    parameter W = 6,                        // number of whole bits in the fixed point format
-    parameter D = 10,                       // number of decimal  bits in the fixed point format - precision to ~.001  - !!! D must be at least 8 !!!
+    parameter W = 5,                        // number of whole bits in the fixed point format
+    parameter D = 11,                       // number of decimal  bits in the fixed point format - precision to ~.001  - !!! D must be at least 8 !!!
 
     // =============== Fixed Point Specific Parameters ===============
     // The following parameters are computed based on the above parameters W and D. 
     // See LinearVisualizer.sv : line 24 for instruction on how to recompute
-    parameter SaturationAmplifier = 1638,   // 1.599.. ~ 1638 ~ 1_1111000000 - scales the hue amplitude up to the LEDLimit
-    parameter quantizeToSix = 'b0000000110, // 0.005859375 (~1/170.5) ~ 6 ~ 0000000110 - quantizes the result to be between 0 and 6
-    parameter LEDLimit = 1023,              // ~1.0 ~ 1023 ~ 1111111111 - sets the final hue amplitude upper limit 
+    parameter SaturationAmplifier = 1638,   // 1.6000.. ~ 3277 ~ 1_10011001101 - scales the hue amplitude up to the LEDLimit
+    parameter quantizeToSix = 12,           // 0.0.005859375 (~1/170.5) ~ 12 ~ 00000001100 - quantizes the result to be between 0 and 6
+    parameter LEDLimit = 2047,              // ~1.0 ~ 2047 ~ 11111111111 - sets the final hue amplitude upper limit 
     parameter steadyBright = 'b0            // (0) use the original amplitudes if they are greater than threshold, 0 otherwise
                                             // (1) use amplitude - threshold value if it is greater than 0, 0 otherwise
 ) (
@@ -28,7 +28,7 @@ module ColorCalc #(
 
     input logic [W + D - 1 : 0] noteAmplitude_i,        // original LV amplitudes but reduced and filtered
     input logic [W + D - 1 : 0] noteAmplitudeFast_i,    // original LV amplitudes but filtered
-    input logic [D - 1 : 0] noteHue_i,                  // the hue of the note mapped to a value between 0 and 1023
+    input logic [D - 2 : 0] noteHue_i,                  // the hue of the note mapped to a value between 0 and 1023
     input logic start, clk, rst                         // system clock and reset
 );
 

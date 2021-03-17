@@ -1,8 +1,8 @@
 import CCHW::*;
 
 module LVDriver #(
-    parameter W = 6,                        // number of whole bits in the fixed point format
-    parameter D = 10,                       // number of decimal  bits in the fixed point format - precision to ~.001  
+    parameter W = 5,                        // number of whole bits in the fixed point format
+    parameter D = 11,                       // number of decimal  bits in the fixed point format - precision to ~.001  
     parameter LEDS  = 50,                   // number of LEDs being driven
     parameter BIN_QTY = 12,                 // number of independant notes being processed
     parameter steadyBright = 'b0,           // (0) use the original amplitudes if they are greater than threshold, 0 otherwise

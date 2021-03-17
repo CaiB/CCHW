@@ -11,18 +11,18 @@
 */
 
 module HueCalc #(
-    parameter W = 6,                        // number of whole bits in the fixed point format
-    parameter D = 10,                       // number of decimal  bits in the fixed point format - precision to ~.001
+    parameter W = 5,                        // number of whole bits in the fixed point format
+    parameter D = 11,                       // number of decimal  bits in the fixed point format - precision to ~.001
     parameter BinsPerOctave  = 24,          // upper limit of the note position values
 
     // =============== Fixed Point Specific Parameters ===============
     // The following parameters are computed based on the above parameters W and D. 
     // See LinearVisualizer.sv : line 24 for instruction on how to recompute
-    parameter yellowToRedSlope  = 21824,    // 21.3125 ~  21824 ~  'b10101_0101000000 ~ 1/48 of hue range (1024) - a slope of the "circular" piecewise hue mapper
-    parameter redToBlueSlope    = 43648,    // 42.625  ~  41600 ~ 'b101010_1010000000 ~ 1/24 of hue range (1024) - a slope of the "circular" piecewise hue mapper
-    parameter blueToYellowSlope = 65472     // 63.9375 ~ 130944 ~ 'b111111_1111000000 ~ 1/16 of hue range (1024) - a slope of the "circular" piecewise hue mapper
+    parameter yellowToRedSlope  = 43648,    // 21.3125 ~  43648 ~  'b10101_01010000000 ~ 1/48 of hue range (1024) - a slope of the "circular" piecewsie hue mapper
+    parameter redToBlueSlope    = 87296,    // 42.625  ~  87296 ~ 'b101010_10100000000 ~ 1/24 of hue range (1024) - a slope of the "circular" piecewise hue mapper
+    parameter blueToYellowSlope = 130944     // 63.9375 ~ 130944 ~ 'b111111_11110000000 ~ 1/16 of hue range (1024) - a slope of the "circular" piecewise hue mapper
 ) (
-    output logic [D - 1 : 0] noteHue_o,     // the resulting hue of the note mapped to a value between 0 and 1023
+    output logic [D - 2 : 0] noteHue_o,     // the resulting hue of the note mapped to a value between 0 and 1023
     output logic data_v,                    // set when the computation is complete
 
     input logic [W + D - 1 : 0] notePosition_i, // input array of the note frequency positions [0, 23.999]
@@ -41,7 +41,7 @@ module HueCalc #(
 
     // =============== cycle 2 outputs and registers ===============
     logic signed [7 + D + W + D - 1 : 0] noteMult; // 7 + D component comes from the parameter being up to 17 bits wide !!! THIS MAY CHANGE IF THE PARAMETER DOES!!!
-    logic signed [D - 1 : 0] noteMult_d1;
+    logic signed [D - 2 : 0] noteMult_d1;
 
     // =============== cycle 3 outputs ===============
     logic [D - 1 : 0] notePreRectified, noteRectified;
@@ -49,12 +49,12 @@ module HueCalc #(
     always_comb begin
         // cycle 0 : comptute which of 3 operations need to be done 
         note = notePosition_i;
-        if (note < 8192)       comparator = 3'b001;
-        else if (note < 16384) comparator = 3'b010;
-        else                   comparator = 3'b100;
+        if (note < (8 * 2**D))       comparator = 3'b001;
+        else if (note < (16 * 2**D)) comparator = 3'b010;
+        else                         comparator = 3'b100;
 
         // cycle 1 : compute the subtraction necessary to place the value in the range [-8.00, 15.99]
-        noteSub = comparator_d1[2] ? 24576 - note_d1: 8192 - note_d1;
+        noteSub = comparator_d1[2] ? (24 * 2**D) - note_d1: (8 * 2**D) - note_d1;
 
         // cycle 2 : the reuslt of these multiplications together span the full 1023 range of values possible
         if (comparator_d2[0])       noteMult = noteSub_d1 * yellowToRedSlope;
@@ -82,7 +82,7 @@ module HueCalc #(
             noteSub_d1 <= noteSub;
 
             // bit range max is the concatenation of the bit range maximums of each signal multiplied and 9 less than that
-            noteMult_d1 <= noteMult[4 + D + W + D - 1 : 4 + D + W + D - 10]; // take the top 10 bits of the result
+            noteMult_d1 <= noteMult >> (2 * D); // take the top 10 bits of the result
 
             valid_delay <= {valid_delay[2:0], start};
         end
