@@ -6,7 +6,7 @@ module Test_LV_Driver;
     parameter D = 10;                       // decimal precision to ~.001
     parameter LEDS  = 50;                   // number of LEDs being driven
     parameter BIN_QTY = 12;
-    parameter steadyBright = 'b0;           // True
+    parameter steadyBright = 'b0;           // False
 
     // these assume the W and D above, use fixedPointCalculator.py to recalculate if needed
     parameter LEDFloor = 102;               // 0.0996... ~ 102 ~ 0001100110
@@ -27,43 +27,7 @@ module Test_LV_Driver;
     logic lv_start;
     logic clk, rst;
 
-    LEDDriver2 #(
-        .LEDS(LEDS), 
-        .FREQ(TB_FREQ),
-        .FREQ_DIV(5)
-    ) ld_u (
-        .dOut    (dOut      ),
-        .clkOut  (clkOut    ),
-        .done    (ld_done   ),
-        .rgb     (rgb       ),
-        .LEDCounts(LEDCounts),
-        .start   (lv_dv     ),
-        .clk     (clk       ),
-        .rst     (rst       )
-    );
-
-
-    LinearVisualizer #(
-        .W                  (W              ),
-        .D                  (D              ),
-        .LEDS               (LEDS           ),
-        .BIN_QTY            (BIN_QTY        ),
-        .steadyBright       (steadyBright   ),
-        .LEDFloor           (102            ),
-        .LEDLimit           (LEDLimit       ),
-        .SaturationAmplifier(SaturationAmplifier),
-        .yellowToRedSlope   (yellowToRedSlope   ),
-        .redToBlueSlope     (redToBlueSlope     ),
-        .blueToYellowSlope  (blueToYellowSlope  )
-    ) lv_u (
-        .rgb            (rgb            ),
-        .LEDCounts      (LEDCounts      ),
-        .data_v         (lv_dv          ),
-        .notes          (notes          ),
-        .start          (lv_start       ),
-        .clk            (clk            ),
-        .rst            (rst            )
-    );
+    LVDriver DUT (.dOut(dOut), .clkOut(clkOut), .done(ld_done), .notes(notes), .start(lv_start), .clk(clk), .rst(rst));
 
     // clock setup
     initial begin
@@ -94,7 +58,7 @@ module Test_LV_Driver;
 
             for (i = 0; i < BIN_QTY; i++) begin
                 notes[i].amplitude = amplitudes[i];
-                notes[i].position = 24 * positions[i];
+                notes[i].position = positions[i];
                 notes[i].valid = '1;
             end
 

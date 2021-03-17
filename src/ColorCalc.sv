@@ -120,7 +120,7 @@ module ColorCalc #(
             colorValueXHue_d1  <= colorValueXHue [D + D - 1 : D + D - 8];
             colorValueXHuex_d1 <= colorValueXHuex[D + D - 1 : D + D - 8];
 
-            valid_delay = {valid_delay[1:0], start};
+            valid_delay <= {valid_delay[1:0], start};
         end
     end
 

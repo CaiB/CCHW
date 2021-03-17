@@ -90,6 +90,7 @@ module HueCalc #(
 
 endmodule
 
+
 module HueCalc_testbench();
     parameter W = 6;
     parameter D = 10;
@@ -133,7 +134,7 @@ module HueCalc_testbench();
 
         start = '1;
 
-        notePosition_i = 10'b0100001100 * 24;
+        notePosition_i = 10'b1000000000 * 24;
 
         @(posedge clk);
         @(posedge clk);

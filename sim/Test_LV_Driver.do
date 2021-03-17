@@ -2,6 +2,7 @@
 vlib work
 
 # Source and Testbench files
+vlog -work work "../src/LVDriver.sv"
 vlog -work work "../src/Common.sv"
 vlog -work work "../src/LEDDriver2.sv"
 vlog -work work "../src/Test_LV_Driver.sv"

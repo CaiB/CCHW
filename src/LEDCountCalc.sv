@@ -7,7 +7,7 @@ module LEDCountCalc #(
     parameter W = 6,                        // number of whole bits in the fixed point format
     parameter D = 10,                       // number of decimal  bits in the fixed point format - precision to ~.001
     parameter LEDS = 50,                    // total which the individual counts should sum to
-    parameter BIN_QTY  = 12,                 // number of independant notes being processed
+    parameter BIN_QTY  = 12,                // number of independant notes being processed
 
     // =============== Fixed Point Specific Parameters ===============
     // The following parameters are computed based on the above parameters W and D. 
@@ -49,7 +49,7 @@ module LEDCountCalc #(
 
     always_ff @(posedge clk) begin
         if (rst) begin 
-            valid_delay = '0;
+            valid_delay <= '0;
         end
         else begin
             // register the cycle outputs
