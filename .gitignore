@@ -1,6 +1,10 @@
 sim/work/**
 sim/transcript
 sim/vsim.wlf
+sim/vlog.opt
+sim/dftoutput.csv
+sim/dftoutputsingle.csv
+sim/modelsim.ini
 
 DE1_SoC/db/**
 DE1_SoC/incremental_db/**
@@ -37,3 +41,5 @@ DFT_DE1/**.pin
 DFT_DE1/**.sld
 DFT_DE1/**.sof
 DFT_DE1/**.sta.**
+
+other/dftbincorrelation.csv
