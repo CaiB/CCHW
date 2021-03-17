@@ -10,6 +10,12 @@ import CCHW::*;
 *   The LV can be totally pipelined however additional speed is unnecessary
 *   Once the LV outut data is valid it stays valid permenatly, this data simply updates
 *    to be more recent every 8 cycles
+*
+*   TESTING:
+*   Testing is best done using ./other/LinearVisualizer.xlsx and ./other/GenerateVisualizerTestData.ps1
+*   The ps script generates an array of binary data in two .mem files in ./other/ which can be copy and
+*    pasted into the xlsx. The xlsx tracks and computes all of the internal registers and wires so that
+*    every component can be thoroughly tested 
 */
 
 module LinearVisualizer #(

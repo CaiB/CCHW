@@ -1,5 +1,6 @@
-/*  LEDCountCalc converts fixed point amplitude to integer value relative proportions, 
-*
+/*  LEDCountCalc converts fixed point amplitude to integer value relative proportions,
+*    the sum of which adds up to LEDS. The actual resulting sum can be marginally smaller
+*    and needs to be handled further in the project
 */
 
 module LEDCountCalc #(
