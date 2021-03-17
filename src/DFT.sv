@@ -1,11 +1,17 @@
 // BPO = Bins Per Octave
 // OC = Octave Count
 // N = Number of bits (precision for entire system)
+// NS = trig table adddress width, specified by GenerateTables.ps1
 module DFT
-#(parameter BPO = 24, parameter OC = 5, parameter N = 16, parameter TOPSIZE = 8192, parameter ND = (N*2)+(OC-1))
+#(parameter BPO = 24, parameter OC = 5, parameter N = 16, parameter TOPSIZE = 8192, parameter ND = (N*2)+(OC-1), parameter NS = 6)
 (
     output logic unsigned [ND-1:0] outBins [0:(BPO*OC)-1], // the magnitudes in each frequency bin
     output logic doingRead, // on while we are doing a read on the input, useful for FPGA
+`ifdef RAM_ASIC
+    output logic [$clog2(BPO)-1:0] trigROMBinIndex,
+    output logic [NS-1:0] trigROMSampleIndex,
+    input logic [N-1:0] sinFromROM, cosFromROM,
+`endif
     input logic signed [N-1:0] inputSample, // New audio data to add
     input logic sampleReady, // Whether to new audio data is ready
     input logic clk, rst
@@ -22,11 +28,19 @@ module DFT
     OctaveSelector #(.OCT(OC)) OctSel(.enableOctaves(EnableOctaves), .incr(AdvanceOctave), .clk, .rst);
 
     // Sin and cos tables
-    localparam NS = 6; // trig table adddress width, specified by GenerateTables.ps1
     logic signed [N-1:0] SinOutput, CosOutput;
     logic [NS-1:0] TrigTablePositions [0:OC-1];
+
+`ifdef RAM_ASIC // SAPR does not like ROMs, so these become I/Os instead.
+    assign trigROMBinIndex = CurrentOctaveBinIndex;
+    assign trigROMSampleIndex = TrigTablePositions[ActiveOctave];
+
+    assign SinOutput = sinFromROM;
+    assign CosOutput = cosFromROM;
+`else // If we're on the FPGA, proceed as usual.
     SinTables #(.N(N), .BINS(BPO), .NS(NS)) SinTab(.value(SinOutput), .bin(CurrentOctaveBinIndex), .position(TrigTablePositions[ActiveOctave]));
     CosTables #(.N(N), .BINS(BPO), .NS(NS)) CosTab(.value(CosOutput), .bin(CurrentOctaveBinIndex), .position(TrigTablePositions[ActiveOctave]));
+`endif
 
     // Octaves
     // Each octave gets 1 bit wider to accomodate addition of previous octave's samples
@@ -45,7 +59,6 @@ module DFT
                   .newSample(Octave3to4), .readSample(EnableOctaves[3] & DoWrites), .enable(EnableOctaves[3] & ActiveOctave == 3 & DoCalcs), .sinData(SinOutput), .cosData(CosOutput), .mathOp(CurrentOctaveOp), .bin(CurrentOctaveBinIndex), .clk, .rst);
     OctaveManager #(.OID(4), .BINS(BPO), .SIZE(TOPSIZE/16), .N(N+4), .NO(ND)) Octave5(.nextOctave(Octave5to6), .magnitude(outBins[0:23]), .trigPosReq(TrigTablePositions[4]),
                   .newSample(Octave4to5), .readSample(EnableOctaves[4] & DoWrites), .enable(EnableOctaves[4] & ActiveOctave == 4 & DoCalcs), .sinData(SinOutput), .cosData(CosOutput), .mathOp(CurrentOctaveOp), .bin(CurrentOctaveBinIndex), .clk, .rst);
-
 
     // TODO: IIR?
 endmodule

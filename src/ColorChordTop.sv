@@ -5,6 +5,11 @@ module ColorChordTop
     output logic [11:0] peaksForDebug, // The peaks at the 12 note positions just to show on the HEX displays for debugging
     output logic doingRead, // high for 1 clock cycle while we read from the audio buffer
     output logic ledClock, ledData, // output lines to GPIO for LEDs
+`ifdef RAM_ASIC
+    output logic [4:0] trigROMBinIndex,
+    output logic [5:0] trigROMSampleIndex,
+    input logic [15:0] sinFromROM, cosFromROM,
+`endif
     input logic signed [15:0] inputSample, // the input audio data
     input logic [15:0] minThreshold,
     input logic sampleReady, // set high when there's fresh audio data ready
@@ -29,7 +34,11 @@ module ColorChordTop
     assign doingRead = DoingSampleRead;
 
     DFT #(.BPO(BINS_PER_OCTAVE), .OC(OCTAVE_COUNT), .N(DATA_WIDTH), .TOPSIZE(TOP_MEMORY_DEPTH))
-        TheDFT(.outBins(DFTBins), .doingRead(DoingSampleRead), .inputSample, .sampleReady, .clk, .rst);
+        TheDFT(.outBins(DFTBins), .doingRead(DoingSampleRead), .inputSample, .sampleReady,
+`ifdef RAM_ASIC // SAPR uses external ROM, so we need those connections
+            .trigROMBinIndex, .trigROMSampleIndex, .sinFromROM, .cosFromROM,
+`endif
+            .clk, .rst);
 
     logic unsigned [DATA_WIDTH-1:0] DFTBinsSmall [0:TOTAL_BINS-1]; // Drop some bits of DFT output, we don't need the precision
     genvar i;
