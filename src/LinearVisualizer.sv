@@ -1,12 +1,10 @@
 import CCHW::*;
 
 module LinearVisualizer #(
-    parameter W = 6,                        // max whole value 63
-    parameter D = 10,                       // decimal precision to ~.001
-
+    parameter W = 6,                        // number of whole bits in the fixed point format
+    parameter D = 10,                       // number of decimal  bits in the fixed point format - precision to ~.001
     parameter LEDS  = 50,                   // number of LEDs being driven
     parameter BIN_QTY = 12,
-    // parameter OctaveBinCount = 24;       // not used
 
     parameter steadyBright = 'b0,           // True
 
@@ -51,8 +49,6 @@ module LinearVisualizer #(
 
     // -----------------------------  PHASE 1 LOGIC   -----------------------------
 
-
-    
 
     // register and hold the note values whenever start is true
     always_ff @(posedge clk) begin
