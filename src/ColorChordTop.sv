@@ -6,7 +6,7 @@ module ColorChordTop
     output logic doingRead, // high for 1 clock cycle while we read from the audio buffer
     output logic ledClock, ledData, // output lines to GPIO for LEDs
     input logic signed [15:0] inputSample, // the input audio data
-    input logic [4:0] iirConstPeakFilter,
+    input logic [4:0] iirConstPeakFilter, iirConstNotes,
     input logic [15:0] minThreshold,
     input logic sampleReady, // set high when there's fresh audio data ready
     input logic clk, rst
@@ -49,7 +49,7 @@ module ColorChordTop
 		else DelayLine <= (DelayLine << 1) | DoingSampleRead;
 
     NoteFinder #(.N(DATA_WIDTH), .BPO(BINS_PER_OCTAVE), .OCT(OCTAVE_COUNT), .BINS(TOTAL_BINS))
-        TheNF(.notes, .peaksOut(peaksForDebug), .iirConstPeakFilter, .minThreshold, .finished(NoteFinderFinished), .dftBins(DFTBinsSmall), .startCycle(DelayLine[3]), .clk, .rst);
+        TheNF(.notes, .peaksOut(peaksForDebug), .iirConstPeakFilter, .iirConstNotes, .minThreshold, .finished(NoteFinderFinished), .dftBins(DFTBinsSmall), .startCycle(DelayLine[3]), .clk, .rst);
 
     // ==== Linear Visualizer ====
     logic StartLEDDriver;

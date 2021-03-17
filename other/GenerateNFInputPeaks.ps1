@@ -1,9 +1,9 @@
 $Peak1Start = 5.0;
-$Peak2Start = 8.7;
+$Peak2Start = 110.0;
 $OutputFile = 'nfpeaks.txt';
 
 $Length = 1024;
-$Speed = 0.05;
+$Speed = 0.02;
 
 Write-Host 'Calculating...';
 
@@ -20,7 +20,7 @@ for($Sample = 0; $Sample -LT $Length; $Sample++)
         $FileData += "$ValueHex`n";
     }
     $Peak1Pos = ($Peak1Pos + $Speed) % 120.0;
-    $Peak2Pos = ($Peak2Pos + $Speed) % 120.0;
+    $Peak2Pos = ($Peak2Pos - $Speed) % 120.0;
 }
 
 Write-Host 'Outputting to file...';

@@ -12,7 +12,7 @@ module NoteFinder
     output Note notes [0:11], // the smoothed notes we processed
     output logic [11:0] peaksOut, // mostly for debugging purposes, whether folded bins had a peak at the index
     output logic finished, // asserted for 1 cycle once processing is completed and note data is stable
-    input logic [4:0] iirConstPeakFilter,
+    input logic [4:0] iirConstPeakFilter, iirConstNotes,
     input logic [N-1:0] minThreshold, // the minimum size peaks must be to even be considered as a potential note
     input logic unsigned [N-1:0] dftBins [0:BINS-1], // the inputs from the DFT
     input logic startCycle, // set this high for a cycle when the DFT has finished processing bins
@@ -82,7 +82,7 @@ module NoteFinder
         .clk, .rst);
 
     // ==== PIPELINE STAGE 4 BEGIN ====
-    NFAssociateStage #(.N(N), .FPF(FPF)) Stage4(.outNotes(notes), .finished, .newPeaks(NewPeaks_S4), .start(PeaksFinished_S4), .clk, .rst);
+    NFAssociateStage #(.N(N), .FPF(FPF)) Stage4(.outNotes(notes), .finished, .newPeaks(NewPeaks_S4), .noteIIRConst(iirConstNotes), .start(PeaksFinished_S4), .clk, .rst);
 endmodule
 
 module NFInputStage
@@ -112,9 +112,10 @@ module NFInputStage
 
     // Determine minimum threshold for peaks
     // TODO: Tweak this as needed
+    logic IIRActive;
     logic [N-1:0] PeakThresholdFromIIR, PeakThreshold;
-    FilterIIRAdjustable #(.N(N), .NI(N)) PeakThresholdIIR(.out(PeakThresholdFromIIR), .in(OverallMaxBinVal >>> 3), .iirConst(iirConstPeakFilter), .write('1), .clk, .rst);
-    assign PeakThreshold = PeakThresholdFromIIR | minThreshold;
+    FilterIIRAdjustable #(.N(N), .NI(N)) PeakThresholdIIR(.out(PeakThresholdFromIIR), .in(OverallMaxBinVal >>> 3), .iirConst(iirConstPeakFilter), .write('1), .clk, .rst(rst || ~IIRActive));
+    assign PeakThreshold = (IIRActive ? PeakThresholdFromIIR : '0) | minThreshold;
 
     // TODO Determine if smoothing adjacent bins may help output quality
     // The software version does this, but it may not be needed
@@ -161,6 +162,7 @@ module NFInputStage
     always_ff @(posedge clk)
         if(rst)
         begin
+            IIRActive <= '0;
             activePeakSlot <= '0;
             activeOctave <= '0;
             peaksFinished <= '0;
@@ -177,6 +179,7 @@ module NFInputStage
         end
         else
         begin
+            if(PeaksFinished) IIRActive <= '1;
             activePeakSlot <= ActivePeakSlot;
             activeOctave <= ActiveOctave;
             peaksFinished <= PeaksFinished;
@@ -308,6 +311,7 @@ module NFAssociateStage
     output Note outNotes [0:11],
     output logic finished,
     input Note newPeaks [0:11],
+    input logic [4:0] noteIIRConst,
     input logic start,
     input logic clk, rst
 );
@@ -316,7 +320,7 @@ module NFAssociateStage
 
     // Peaks come in through newPeaks. They get analyzed, and associated/merged into existing notes. This new set of notes is stored in AssociatedNotes.
     // Once notes are associated, they get smoothed and registed to the output, ExistingNotes.
-    Note AssociatedNotes [0:11], ExistingNotes [0:11];
+    Note AssociatedNotes [0:11], AssociatedNotesFiltered [0:11], ExistingNotes [0:11];
     assign outNotes = ExistingNotes;
 
     logic RegToExisting;
@@ -331,6 +335,7 @@ module NFAssociateStage
         for(i = 0; i < 12; i++)
         begin: MakeCurrentNoteRegs
             NoteRegister Current(.out(ExistingNotes[i]), .in(AssociatedNotes[i]), .write(RegToExisting), .clk, .rst);
+            NoteIIR OutFilter(.out(AssociatedNotesFiltered[i]), .in(AssociatedNotes[i]), .lastOut(ExistingNotes[i]), .iirConst(noteIIRConst));
             NoteRegister New(.out(AssociatedNotes[i]), .in(CurrentlyAssociating), .write(DoAssociatingWrite && AssociatingWriteLoc == i), .clk, .rst);
             assign AssociatedNotesValid[i] = AssociatedNotes[i].valid;
             assign ExistingNotesValid[i] = ExistingNotes[i].valid;
@@ -376,40 +381,17 @@ module NFAssociateStage
         endcase
     end
 
-    logic [N-1:0] LowerMergeBound, UpperMergeBound; // If an existing note is within this range, the new peak can associate to it.
-    logic LowerConditionMet, UpperConditionMet;
+    logic signed [N:0] SignedDistance;
+    logic [N-1:0] Distance, LoopDistance;
 
     always_comb // Combinational outputs
     begin
-        if(newPeaks[PeakCtr].position >= ASSDIST) // lower: no wraparound
-        begin
-            LowerMergeBound = newPeaks[PeakCtr].position - ASSDIST;
-            LowerConditionMet = ExistingNotes[NoteCtr].position > LowerMergeBound;
-        end
-        else // Lower: with wraparound
-        begin
-            LowerMergeBound = (('d24 << FPF) - ASSDIST) + newPeaks[PeakCtr].position;
-            LowerConditionMet = (ExistingNotes[NoteCtr].position > LowerMergeBound) || (ExistingNotes[NoteCtr].position < (newPeaks[PeakCtr].position + ASSDIST));
-        end
+        SignedDistance = newPeaks[PeakCtr].position - ExistingNotes[NoteCtr].position; // -23.999 to 23.999
+        Distance = SignedDistance[N] ? -SignedDistance : SignedDistance; // 0 to 23.999
+        LoopDistance = (Distance > ('d12 << FPF)) ? ('d24 << FPF) - Distance : Distance;
 
-        if(newPeaks[PeakCtr].position <= (('d24 << FPF) - ASSDIST)) // upper: no wraparound
-        begin
-            UpperMergeBound = newPeaks[PeakCtr].position + ASSDIST;
-            UpperConditionMet = ExistingNotes[NoteCtr].position < UpperMergeBound;
-        end
-        else // upper: with wraparound
-        begin
-            UpperMergeBound = ASSDIST - (('d24 << FPF) - newPeaks[PeakCtr].position);
-            UpperConditionMet = (ExistingNotes[NoteCtr].position < UpperMergeBound) || (ExistingNotes[NoteCtr].position > (newPeaks[PeakCtr].position - ASSDIST));
-        end
+        AssociateHere = ~PeakHasAssociated[PeakCtr] && (LoopDistance < ASSDIST);
 
-        AssociateHere = ~PeakHasAssociated[PeakCtr] && LowerConditionMet && UpperConditionMet;
-
-
-        /*AssociateHere = (~PeakHasAssociated[PeakCtr] && // we not yet found a note to associate to
-                        ((ExistingNotes[NoteCtr].position - ASSDIST) < newPeaks[PeakCtr].position) && // peak is within range on left of note
-                        ((ExistingNotes[NoteCtr].position + ASSDIST) > newPeaks[PeakCtr].position)); // peak is within range on right of note
-                        */
         HasEmptyNoteSlot = '1;
         // Not supported by Quartus D:
         // case(AssociatedNotesValid) inside
@@ -535,6 +517,25 @@ module NFAssociateStage
     // IIR between
     // exception if valid is rising, don't iir position
 
+endmodule
+
+module NoteIIR
+#(parameter N = 16, parameter NI = N)
+(
+    output Note out,
+    input Note in, lastOut,
+    input logic [4:0] iirConst
+);
+    logic signed [NI-1:0] diffAmp, diffPos, adjustedAmp, AdjustedPos;
+    logic signed [N-1:0] NewOut;
+
+    assign diffAmp = in.amplitude - lastOut.amplitude;
+    assign diffPos = in.position - lastOut.position;
+    assign adjustedAmp = diffAmp >>> iirConst;
+    assign adjustedPos = diffPos >>> iirConst;
+    assign out.amplitude = (in.valid && lastOut.valid) ? (adjustedAmp + lastOut.amplitude) : in.position;
+    assign out.position = (in.valid && lastOut.valid) ? (adjustedPos + lastOut.position) : in.position;
+    assign out.valid = in.valid;
 endmodule
 
 

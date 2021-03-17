@@ -24,9 +24,9 @@ module Test_NoteFinderWithData;
     NoteFinder #(.N(N), .BPO(BPO), .OCT(OCT)) DUT(.notes, .peaksOut, .finished, .iirConstPeakFilter, .dftBins, .minThreshold, .startCycle, .clk, .rst);
 
     real NewPeaks_S4R [0:11], OutNotesR [0:11];
-    real LowerMergeBoundR, UpperMergeBoundR;
-    assign LowerMergeBoundR = DUT.Stage4.LowerMergeBound * (2.0 ** -FPF);
-    assign UpperMergeBoundR = DUT.Stage4.UpperMergeBound * (2.0 ** -FPF);
+    real DistanceR, LoopDistanceR;
+    assign DistanceR = DUT.Stage4.Distance * (2.0 ** -FPF);
+    assign LoopDistanceR = DUT.Stage4.LoopDistance * (2.0 ** -FPF);
 
     genvar i;
     generate
@@ -55,7 +55,7 @@ module Test_NoteFinderWithData;
     endtask
 
     task InsertData(int samples);
-        for(int i = samples - 1; i > 0; i--)
+        for(int i = 0; i < samples; i++)
         begin
             dftBins = InputData[i];
             startCycle = '1;

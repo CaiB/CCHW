@@ -35,6 +35,10 @@ add wave -noupdate /Test_NoteFinderWithData/LowerMergeBoundR
 add wave -noupdate /Test_NoteFinderWithData/UpperMergeBoundR
 add wave -noupdate /Test_NoteFinderWithData/DUT/Stage4/LowerConditionMet
 add wave -noupdate /Test_NoteFinderWithData/DUT/Stage4/UpperConditionMet
+add wave -noupdate /Test_NoteFinderWithData/DUT/Stage4/SignedDistance
+add wave -noupdate /Test_NoteFinderWithData/DUT/Stage4/Distance
+add wave -noupdate /Test_NoteFinderWithData/DistanceR
+add wave -noupdate /Test_NoteFinderWithData/LoopDistanceR
 add wave -noupdate /Test_NoteFinderWithData/DUT/Stage4/AssociatedNotes
 add wave -noupdate /Test_NoteFinderWithData/DUT/Stage4/CurrentlyAssociating
 add wave -noupdate /Test_NoteFinderWithData/DUT/Stage4/DoAssociatingWrite
@@ -43,7 +47,7 @@ add wave -noupdate /Test_NoteFinderWithData/DUT/Stage4/NoteHasBeenAssociatedTo
 add wave -noupdate /Test_NoteFinderWithData/DUT/Stage4/AssociateHere
 add wave -noupdate -radix unsigned /Test_NoteFinderWithData/DUT/Stage4/FirstEmptyNote
 TreeUpdate [SetDefaultTree]
-WaveRestoreCursors {{Cursor 1} {23833367 ps} 0}
+WaveRestoreCursors {{Cursor 1} {13161513 ps} 0}
 quietly wave cursor active 1
 configure wave -namecolwidth 150
 configure wave -valuecolwidth 123
@@ -59,4 +63,4 @@ configure wave -griddelta 40
 configure wave -timeline 0
 configure wave -timelineunits ps
 update
-WaveRestoreZoom {58702912 ps} {60709952 ps}
+WaveRestoreZoom {12787438 ps} {12789398 ps}

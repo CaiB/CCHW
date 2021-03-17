@@ -50,7 +50,9 @@ module part1
 	logic [15:0] MinThreshold;
 	logic SampleReadRaw;
 
-	ColorChordTop CCHW(.peaksForDebug(NFPeaks), .iirConstPeakFilter(SyncedSwitches[4:0]), .minThreshold(MinThreshold), .ledData(GPIO_0[18]), .ledClock(GPIO_0[19]), .doingRead(SampleReadRaw), .inputSample, .sampleReady(read_ready), .clk(clk_12M5), .rst(reset || !locked));
+	ColorChordTop CCHW(.peaksForDebug(NFPeaks), .iirConstPeakFilter(SyncedSwitches[4:0]), .iirConstNotes(SyncedSwitches[9:5]), .minThreshold(MinThreshold), .ledData(GPIO_0[18]), .ledClock(GPIO_0[19]), .doingRead(SampleReadRaw), .inputSample, .sampleReady(read_ready), .clk(clk_12M5), .rst(reset || !locked));
+
+	//assign LEDR = MinThreshold[9:0];
 
 	// Because the CCHW system runs at 12.5MHz, the read signal is high for 4 of the 50MHz clock cycles. This module turns any length back into 1 clock cycle to remedy this.
 	PulseExtract ReadPulse(.pulse(read), .signal(SampleReadRaw), .clk(CLOCK_50), .rst(reset));
@@ -76,7 +78,8 @@ module part1
 		HEX2 = {1'b1, {2{~NFPeaks[6]}}, 1'b1, {2{~NFPeaks[7]}}, 1'b1};
 		HEX3 = {1'b1, {2{~NFPeaks[4]}}, 1'b1, {2{~NFPeaks[5]}}, 1'b1};
 		HEX4 = {1'b1, {2{~NFPeaks[2]}}, 1'b1, {2{~NFPeaks[3]}}, 1'b1};
-		HEX5 = {1'b1, {2{~NFPeaks[0]}}, 1'b1, {2{~NFPeaks[1]}}, 1'b1};
+		//HEX5 = {1'b1, {2{~NFPeaks[0]}}, 1'b1, {2{~NFPeaks[1]}}, 1'b1};
+		HEX5 = {~MouseLeftRaw, {2{~NFPeaks[0]}}, 1'b1, {2{~NFPeaks[1]}}, ~MouseRightRaw};
 	end
 
 	// Synchronizers for switch inputs
