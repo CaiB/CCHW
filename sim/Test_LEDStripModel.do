@@ -3,9 +3,10 @@ vlib work
 
 # Source and Testbench files
 vlog -work work "../src/LEDModel.sv"
+vlog -work work "../src/Test_LEDModel.sv"
 
 # Call simulator
-vsim -voptargs="+acc" -t 1ps -lib work LEDStripModel_testbench
+vsim -voptargs="+acc" -t 1ps -lib work Test_LEDStripModel
 
 # Source the wave file
 do Test_LEDStripModel_wave.do

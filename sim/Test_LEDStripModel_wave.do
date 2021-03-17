@@ -1,9 +1,9 @@
 onerror {resume}
 quietly WaveActivateNextPane {} 0
-add wave -noupdate -radix hexadecimal /LEDStripModel_testbench/rgb
-add wave -noupdate -radix hexadecimal /LEDStripModel_testbench/expected
-add wave -noupdate -expand /LEDStripModel_testbench/SDIO
-add wave -noupdate -expand /LEDStripModel_testbench/CKIO
+add wave -noupdate -radix hexadecimal /Test_LEDStripModel/rgb
+add wave -noupdate -radix hexadecimal /Test_LEDStripModel/expected
+add wave -noupdate -expand /Test_LEDStripModel/SDIO
+add wave -noupdate -expand /Test_LEDStripModel/CKIO
 TreeUpdate [SetDefaultTree]
 WaveRestoreCursors {{Cursor 1} {271499284 ps} 0}
 quietly wave cursor active 1

@@ -1,5 +1,5 @@
-[double] $IIRConst = 0.9791483623;
-[int] $SampleRate = 300;
+[double] $IIRConst = 0.99;
+[int] $SampleRate = 48000;
 [double] $TargetValue = 0.9999;
 
 Write-Host "Using IIR const $IIRConst and sample rate $SampleRate Hz";

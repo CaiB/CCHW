@@ -2,15 +2,16 @@
 vlib work
 
 # Source and Testbench files
+vlog -work work "../src/Common.sv"
 vlog -work work "../src/LinearVisualizer.sv"
+vlog -work work "../src/Test_LinearVisualizer.sv"
 vlog -work work "../src/AmpPreprocessor.sv"
 vlog -work work "../src/HueCalc.sv"
 vlog -work work "../src/ColorCalc.sv"
 vlog -work work "../src/LEDCountCalc.sv"
 
-
 # Call simulator
-vsim -voptargs="+acc" -t 1ps -lib work LinearVisualizer_testbench
+vsim -voptargs="+acc" -t 1ps -lib work Test_LinearVisualizer
 
 # Source the wave file
 do Test_LinearVisualizer_wave.do

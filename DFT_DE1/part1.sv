@@ -42,7 +42,7 @@ module part1
 
 	logic [10:0] debugSignals;
 
-	ColorChordTop CCHW(.peaksForDebug(NFPeaks), .debugSignals, .ledData(GPIO_0[18]), .ledClock(GPIO_0[19]), .doingRead(SampleReadRaw), .inputSample, .sampleReady(read_ready), .clk(clk_12M5), .rst(reset || !locked));
+	ColorChordTop CCHW(.peaksForDebug(NFPeaks), .debugSignals, .iirConstPeakFilter(SyncedSwitches[4:0]), .ledData(GPIO_0[18]), .ledClock(GPIO_0[19]), .doingRead(SampleReadRaw), .inputSample, .sampleReady(read_ready), .clk(clk_12M5), .rst(reset || !locked));
 	
 	// Visual outputs
 	logic [9:0] InputAbsTrim; // trimmed, absolute value of input audio, to get an idea of input amplitude

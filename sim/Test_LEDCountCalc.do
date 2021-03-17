@@ -3,9 +3,10 @@ vlib work
 
 # Source and Testbench files
 vlog -work work "../src/LEDCountCalc.sv"
+vlog -work work "../src/Test_LEDCountCalc.sv"
 
 # Call simulator
-vsim -voptargs="+acc" -t 1ps -lib work LEDCountCalc_testbench
+vsim -voptargs="+acc" -t 1ps -lib work Test_LEDCountCalc
 
 # Source the wave file
 do Test_LEDCountCalc_wave.do

@@ -2,8 +2,10 @@
 vlib work
 
 # Source and Testbench files
+vlog -work work "../src/Common.sv"
 vlog -work work "../src/Test_NoteFinder.sv"
 vlog -work work "../src/NoteFinder.sv"
+vlog -work work "../src/Filter.sv"
 
 # Call simulator
 vsim -voptargs="+acc" -t 1ps -lib work Test_NoteFinder

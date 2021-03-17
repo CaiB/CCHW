@@ -3,9 +3,10 @@ vlib work
 
 # Source and Testbench files
 vlog -work work "../src/ColorCalc.sv"
+vlog -work work "../src/Test_ColorCalc.sv"
 
 # Call simulator
-vsim -voptargs="+acc" -t 1ps -lib work ColorCalc_testbench
+vsim -voptargs="+acc" -t 1ps -lib work Test_ColorCalc
 
 # Source the wave file
 do Test_ColorCalc_wave.do

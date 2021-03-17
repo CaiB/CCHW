@@ -2,6 +2,7 @@
 vlib work
 
 # Source and Testbench files
+vlog -work work "../src/Common.sv"
 vlog -work work "../src/Test_NoteFinder.sv"
 vlog -work work "../src/NoteFinder.sv"
 
