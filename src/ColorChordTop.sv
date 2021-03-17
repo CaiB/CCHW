@@ -2,7 +2,6 @@ import CCHW::*;
 
 module ColorChordTop
 (
-    output logic [10:0] debugSignals,
     output logic [11:0] peaksForDebug, // The peaks at the 12 note positions just to show on the HEX displays for debugging
     output logic doingRead, // high for 1 clock cycle while we read from the audio buffer
     output logic ledClock, ledData, // output lines to GPIO for LEDs
@@ -56,17 +55,11 @@ module ColorChordTop
     logic [11:0][23:0] RGBData;
     logic [11:0][$clog2(LED_QTY)-1:0] LEDCounts;
 
-    logic LEDCountDone, ampPreprocessorDone;
-
-    LinearVisualizer lv_u (.LEDCountDone, .ampPreprocessorDone, .rgb(RGBData), .LEDCounts(LEDCounts), .data_v(StartLEDDriver), .notes, .start(NoteFinderFinished), .clk, .rst);
+    LinearVisualizer lv_u (.rgb(RGBData), .LEDCounts(LEDCounts), .data_v(StartLEDDriver), .notes, .start(NoteFinderFinished), .clk, .rst);
 
     // ==== LED Driver ====
     logic LEDOutputDone;
 
-    logic [$clog2(LED_QTY) - 1 : 0] ColorCount;
-
     LEDDriver2 #(.FREQ_DIV(LED_FREQ_DIV), .WaitMultiplier(LED_WAIT_MULT), .LEDS(LED_QTY))
-        OutDriver(.ColorCount, .dOut(ledData), .clkOut(ledClock), .done(LEDOutputDone), .rgb(RGBData), .LEDCounts, .start(StartLEDDriver), .clk, .rst);
-    
-    assign debugSignals = {NoteFinderFinished, StartLEDDriver, LEDOutputDone, LEDCountDone, ampPreprocessorDone, ColorCount};
+        OutDriver(.dOut(ledData), .clkOut(ledClock), .done(LEDOutputDone), .rgb(RGBData), .LEDCounts, .start(StartLEDDriver), .clk, .rst);
 endmodule
