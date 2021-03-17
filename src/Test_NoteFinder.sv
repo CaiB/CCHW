@@ -268,7 +268,7 @@ module Test_NoteFinder;
     logic finished;
     logic [4:0] iirConstPeakFilter;
     logic unsigned [N-1:0] dftBins [0:BINS-1];
-    logic [9:0] minThreshold;
+    logic [15:0] minThreshold;
     logic startCycle;
     logic clk, rst;
 
@@ -312,7 +312,7 @@ module Test_NoteFinder;
                        0,   50,   10,   80,  150,  300,  500,  800,  900,  950, 1200, 1500, 1500, 1500, 1900, 1600, 1100,  600,  400,  200,   80,   10,    0,    1};// 4
         startCycle = '1; @(posedge clk);
         startCycle = '0;
-        repeat(250) @(posedge clk);
+        repeat(800) @(posedge clk);
         $stop;
     end
 endmodule

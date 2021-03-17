@@ -13,8 +13,8 @@ module NoteFinder
     output logic [11:0] peaksOut, // mostly for debugging purposes, whether folded bins had a peak at the index
     output logic finished, // asserted for 1 cycle once processing is completed and note data is stable
     input logic [4:0] iirConstPeakFilter,
+    input logic [N-1:0] minThreshold, // the minimum size peaks must be to even be considered as a potential note
     input logic unsigned [N-1:0] dftBins [0:BINS-1], // the inputs from the DFT
-    input logic [9:0] minThreshold, // the minimum size peaks must be to even be considered as a potential note
     input logic startCycle, // set this high for a cycle when the DFT has finished processing bins
     input logic clk, rst
 );
@@ -97,15 +97,14 @@ module NFInputStage
 
     input logic [4:0] iirConstPeakFilter,
     input logic unsigned [N-1:0] dftBins [0:BINS-1], // the inputs from the DFT
-    input logic [9:0] minThreshold, // the minimum size peaks must be to even be considered as a potential note
+    input logic [N-1:0] minThreshold, // the minimum size peaks must be to even be considered as a potential note
     input logic startCycle,
     input logic clk, rst
 );
     genvar i;
 
-    // Pre-process DFT input data
-        // Shift by some value (amplify)
-        //TODO IIR each bin
+    //TODO Determine if IIRing each bin may help output quality
+    // The software version does this, but it may not be needed
     
     // Find maximum of all bins
     logic [N-1:0] OverallMaxBinVal;
@@ -113,16 +112,17 @@ module NFInputStage
 
     // Determine minimum threshold for peaks
     // TODO: Tweak this as needed
-    // TODO reintroduce minThreshold?
-    logic [N-1:0] PeakThreshold;
-    FilterIIRAdjustable #(.N(N), .NI(N)) PeakThresholdIIR(.out(PeakThreshold), .in(OverallMaxBinVal >>> 3), .iirConst(iirConstPeakFilter), .write('1), .clk, .rst);
+    logic [N-1:0] PeakThresholdFromIIR, PeakThreshold;
+    FilterIIRAdjustable #(.N(N), .NI(N)) PeakThresholdIIR(.out(PeakThresholdFromIIR), .in(OverallMaxBinVal >>> 3), .iirConst(iirConstPeakFilter), .write('1), .clk, .rst);
+    assign PeakThreshold = PeakThresholdFromIIR | minThreshold;
 
-    // TODO Smooth adjacent bins (needed?)
+    // TODO Determine if smoothing adjacent bins may help output quality
+    // The software version does this, but it may not be needed
 
     // Detect peaks
     // -> Positions are now 0-119
     // -> Up to 60 peaks max =ceil(BINS/2)
-    logic [BINS-1:0] BinHasPeak; // TODO: change input
+    logic [BINS-1:0] BinHasPeak;
     generate
         for(i = 1; i < BINS-1; i++)
         begin : PeakDetectors
@@ -376,11 +376,40 @@ module NFAssociateStage
         endcase
     end
 
+    logic [N-1:0] LowerMergeBound, UpperMergeBound; // If an existing note is within this range, the new peak can associate to it.
+    logic LowerConditionMet, UpperConditionMet;
+
     always_comb // Combinational outputs
-    begin // TODO handle wraparound on ends
-        AssociateHere = (~PeakHasAssociated[PeakCtr] && // we not yet found a note to associate to
+    begin
+        if(newPeaks[PeakCtr].position >= ASSDIST) // lower: no wraparound
+        begin
+            LowerMergeBound = newPeaks[PeakCtr].position - ASSDIST;
+            LowerConditionMet = ExistingNotes[NoteCtr].position > LowerMergeBound;
+        end
+        else // Lower: with wraparound
+        begin
+            LowerMergeBound = (('d24 << FPF) - ASSDIST) + newPeaks[PeakCtr].position;
+            LowerConditionMet = (ExistingNotes[NoteCtr].position > LowerMergeBound) || (ExistingNotes[NoteCtr].position < (newPeaks[PeakCtr].position + ASSDIST));
+        end
+
+        if(newPeaks[PeakCtr].position <= (('d24 << FPF) - ASSDIST)) // upper: no wraparound
+        begin
+            UpperMergeBound = newPeaks[PeakCtr].position + ASSDIST;
+            UpperConditionMet = ExistingNotes[NoteCtr].position < UpperMergeBound;
+        end
+        else // upper: with wraparound
+        begin
+            UpperMergeBound = ASSDIST - (('d24 << FPF) - newPeaks[PeakCtr].position);
+            UpperConditionMet = (ExistingNotes[NoteCtr].position < UpperMergeBound) || (ExistingNotes[NoteCtr].position > (newPeaks[PeakCtr].position - ASSDIST));
+        end
+
+        AssociateHere = ~PeakHasAssociated[PeakCtr] && LowerConditionMet && UpperConditionMet;
+
+
+        /*AssociateHere = (~PeakHasAssociated[PeakCtr] && // we not yet found a note to associate to
                         ((ExistingNotes[NoteCtr].position - ASSDIST) < newPeaks[PeakCtr].position) && // peak is within range on left of note
                         ((ExistingNotes[NoteCtr].position + ASSDIST) > newPeaks[PeakCtr].position)); // peak is within range on right of note
+                        */
         HasEmptyNoteSlot = '1;
         // Not supported by Quartus D:
         // case(AssociatedNotesValid) inside
@@ -613,12 +642,14 @@ module PeakPlacer
         if(DiffL < DiffR) // More towards left
         begin
             Fractional = (1 << (FPF - 1)) + (PropDiffL >> (N - FPF));
+            if(TotalAdjacentDiff == '0) Fractional = '0;
             if(binIndex == 0) peakPosition = {(BPO - 1'd1), Fractional}; // Handles moving to the left of bin 0
             else peakPosition = {(binIndex - 1'd1), Fractional};
         end
         else // More towards right
         begin
             Fractional = (1 << (FPF - 1)) - (PropDiffR >> (N - FPF));
+            if(TotalAdjacentDiff == '0) Fractional = '0;
             peakPosition = {binIndex, Fractional};
         end
     end

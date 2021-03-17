@@ -36,24 +36,33 @@ module part1
 	PLL PLL12M5 (.refclk(CLOCK_50), .rst(reset), .outclk_0(clk_12M5), .locked);
 
 	// Mouse
+	logic MouseLeftRaw, MouseRightRaw, MouseMiddleRaw;
+	ps2 Mouse(.start('0), .reset, .CLOCK_50, .PS2_CLK, .PS2_DAT, .button_left(MouseLeftRaw), .button_right(MouseRightRaw), .button_middle(MouseMiddleRaw));
+
 	logic MouseLeft, MouseRight, MouseMiddle;
-	ps2 Mouse(.start('1), .reset, .CLOCK_50, .PS2_CLK, .PS2_DAT, .button_left(MouseLeft), .button_right(MouseRight), .button_middle(MouseMiddle));
+	PulseExtract PulseMouseL(.pulse(MouseLeft), .signal(MouseLeftRaw), .clk(CLOCK_50), .rst(reset));
+	PulseExtract PulseMouseR(.pulse(MouseRight), .signal(MouseRightRaw), .clk(CLOCK_50), .rst(reset));
+	PulseExtract PulseMouseM(.pulse(MouseMiddle), .signal(MouseMiddleRaw), .clk(CLOCK_50), .rst(reset));
 
 	// ColorChord
 	logic [9:0] SyncedSwitches;
 	logic [11:0] NFPeaks;
 	logic [15:0] MinThreshold;
-	logic SampleReadRaw; // TODO: This signal is high for 1 clock cycle at 12.5MHz, but this is more than 1 cycle at 50MHz, which the audio system uses! We may miss samples!
-	assign read = SampleReadRaw;
+	logic SampleReadRaw;
 
-	ColorChordTop CCHW(.peaksForDebug(NFPeaks), .iirConstPeakFilter(SyncedSwitches[4:0]), .ledData(GPIO_0[18]), .ledClock(GPIO_0[19]), .doingRead(SampleReadRaw), .inputSample, .sampleReady(read_ready), .clk(clk_12M5), .rst(reset || !locked));
+	ColorChordTop CCHW(.peaksForDebug(NFPeaks), .iirConstPeakFilter(SyncedSwitches[4:0]), .minThreshold(MinThreshold), .ledData(GPIO_0[18]), .ledClock(GPIO_0[19]), .doingRead(SampleReadRaw), .inputSample, .sampleReady(read_ready), .clk(clk_12M5), .rst(reset || !locked));
+
+	// Because the CCHW system runs at 12.5MHz, the read signal is high for 4 of the 50MHz clock cycles. This module turns any length back into 1 clock cycle to remedy this.
+	PulseExtract ReadPulse(.pulse(read), .signal(SampleReadRaw), .clk(CLOCK_50), .rst(reset));
 	
 	// Mouse threshold selection
-	logic [15:0] MinThresholdRaw;
-
-	/*always_ff @(posedge CLOCK_50)
-		if(reset) MinThresholdRaw <= '0;
-		else if()*/
+	logic [3:0] ThresholdNum;
+	always_ff @(posedge CLOCK_50)
+		if(reset) ThresholdNum <= '0;
+		else if(MouseLeft && ThresholdNum != '1) ThresholdNum <= ThresholdNum + 1'b1;
+		else if(MouseRight && ThresholdNum != '0) ThresholdNum <= ThresholdNum - 1'b1;
+	
+	assign MinThreshold = (16'b1 << ThresholdNum) - 1'b1;
 
 	// Visual outputs
 	logic [9:0] InputAbsTrim; // trimmed, absolute value of input audio, to get an idea of input amplitude
@@ -67,7 +76,7 @@ module part1
 		HEX2 = {1'b1, {2{~NFPeaks[6]}}, 1'b1, {2{~NFPeaks[7]}}, 1'b1};
 		HEX3 = {1'b1, {2{~NFPeaks[4]}}, 1'b1, {2{~NFPeaks[5]}}, 1'b1};
 		HEX4 = {1'b1, {2{~NFPeaks[2]}}, 1'b1, {2{~NFPeaks[3]}}, 1'b1};
-		HEX5 = {MouseMiddle, {2{~NFPeaks[0]}}, MouseLeft, {2{~NFPeaks[1]}}, MouseRight};
+		HEX5 = {1'b1, {2{~NFPeaks[0]}}, 1'b1, {2{~NFPeaks[1]}}, 1'b1};
 	end
 
 	// Synchronizers for switch inputs
