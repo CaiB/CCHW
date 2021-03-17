@@ -39,25 +39,24 @@ module part1
 	logic MouseLeftRaw, MouseRightRaw, MouseMiddleRaw;
 	ps2 Mouse(.start('0), .reset, .CLOCK_50, .PS2_CLK, .PS2_DAT, .button_left(MouseLeftRaw), .button_right(MouseRightRaw), .button_middle(MouseMiddleRaw));
 
+	// Turns long mouse clicks into single-cycle pulses
 	logic MouseLeft, MouseRight, MouseMiddle;
 	PulseExtract PulseMouseL(.pulse(MouseLeft), .signal(MouseLeftRaw), .clk(CLOCK_50), .rst(reset));
 	PulseExtract PulseMouseR(.pulse(MouseRight), .signal(MouseRightRaw), .clk(CLOCK_50), .rst(reset));
 	PulseExtract PulseMouseM(.pulse(MouseMiddle), .signal(MouseMiddleRaw), .clk(CLOCK_50), .rst(reset));
 
-	// ColorChord
+	// ColorChord: the interesting bit
 	logic [9:0] SyncedSwitches;
 	logic [11:0] NFPeaks;
 	logic [15:0] MinThreshold;
 	logic SampleReadRaw;
 
-	ColorChordTop CCHW(.peaksForDebug(NFPeaks), .iirConstPeakFilter(SyncedSwitches[4:0]), .iirConstNotes(SyncedSwitches[9:5]), .minThreshold(MinThreshold), .ledData(GPIO_0[18]), .ledClock(GPIO_0[19]), .doingRead(SampleReadRaw), .inputSample, .sampleReady(read_ready), .clk(clk_12M5), .rst(reset || !locked));
-
-	//assign LEDR = MinThreshold[9:0];
+	ColorChordTop CCHW(.peaksForDebug(NFPeaks), .minThreshold(MinThreshold), .ledData(GPIO_0[18]), .ledClock(GPIO_0[19]), .doingRead(SampleReadRaw), .inputSample, .sampleReady(read_ready), .clk(clk_12M5), .rst(reset || !locked));
 
 	// Because the CCHW system runs at 12.5MHz, the read signal is high for 4 of the 50MHz clock cycles. This module turns any length back into 1 clock cycle to remedy this.
 	PulseExtract ReadPulse(.pulse(read), .signal(SampleReadRaw), .clk(CLOCK_50), .rst(reset));
 	
-	// Mouse threshold selection
+	// Threshold selection by mouse clicks
 	logic [3:0] ThresholdNum;
 	always_ff @(posedge CLOCK_50)
 		if(reset) ThresholdNum <= '0;
@@ -78,11 +77,12 @@ module part1
 		HEX2 = {1'b1, {2{~NFPeaks[6]}}, 1'b1, {2{~NFPeaks[7]}}, 1'b1};
 		HEX3 = {1'b1, {2{~NFPeaks[4]}}, 1'b1, {2{~NFPeaks[5]}}, 1'b1};
 		HEX4 = {1'b1, {2{~NFPeaks[2]}}, 1'b1, {2{~NFPeaks[3]}}, 1'b1};
-		//HEX5 = {1'b1, {2{~NFPeaks[0]}}, 1'b1, {2{~NFPeaks[1]}}, 1'b1};
-		HEX5 = {~MouseLeftRaw, {2{~NFPeaks[0]}}, 1'b1, {2{~NFPeaks[1]}}, ~MouseRightRaw};
+		HEX5 = {1'b1, {2{~NFPeaks[0]}}, 1'b1, {2{~NFPeaks[1]}}, 1'b1};
+		//HEX5 = {~MouseLeftRaw, {2{~NFPeaks[0]}}, 1'b1, {2{~NFPeaks[1]}}, ~MouseRightRaw}; // Mouse debugging
 	end
 
 	// Synchronizers for switch inputs
+	// These were used when tweaking IIR constants, to be able to adjust live and find good values
 	genvar i;
 	generate
 		for(i = 0; i < 10; i++)

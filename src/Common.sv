@@ -7,6 +7,7 @@ package CCHW;
     } Note;
 endpackage
 
+`ifndef SYNTHESIS
 package CCHWTest;
     function logic [15:0] RealToFixed(input real in, input int fpf);
         static int Whole = (in >= 0 ? int'($floor(in)) : int'($ceil(in)));
@@ -18,3 +19,4 @@ package CCHWTest;
         FixedToReal = (in * (2.0 ** -fpf));
     endfunction
 endpackage
+`endif

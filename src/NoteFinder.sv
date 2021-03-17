@@ -7,12 +7,11 @@ import CCHW::*;
 // So if a note is present in slot 6, and a note is present in the next cycle in slot 6, it should be treated as the same note, however with updated position and amplitude info.
 // Note also that there is infinite potential for note puns in this file's comments :)
 module NoteFinder
-#(parameter N = 16, parameter BPO = 24, parameter OCT = 5, parameter BINS = OCT*BPO)
+#(parameter N = 16, parameter BPO = 24, parameter OCT = 5, parameter BINS = OCT*BPO, parameter PTIIR = 5, parameter NIIR = 7)
 (
     output Note notes [0:11], // the smoothed notes we processed
     output logic [11:0] peaksOut, // mostly for debugging purposes, whether folded bins had a peak at the index
     output logic finished, // asserted for 1 cycle once processing is completed and note data is stable
-    input logic [4:0] iirConstPeakFilter, iirConstNotes,
     input logic [N-1:0] minThreshold, // the minimum size peaks must be to even be considered as a potential note
     input logic unsigned [N-1:0] dftBins [0:BINS-1], // the inputs from the DFT
     input logic startCycle, // set this high for a cycle when the DFT has finished processing bins
@@ -30,8 +29,8 @@ module NoteFinder
     logic PeakSideIsL_S2, PeakHere_S2;
     logic [N-1:0] BinDataFarLeft_S2, BinDataLeft_S2, BinDataRight_S2, BinDataFarRight_S2;
 
-    NFInputStage #(.N(N), .BINS(BINS), .OCT(OCT), .BPO(BPO)) Stage1(.activePeakSlot(ActivePeakSlot_S2), .activeOctave(ActiveOctave_S2), .peaksFinished(PeaksFinished_S2), .doPeakOperation(DoPeakOperation_S2), .clearPeaks(ClearPeaks_S2),
-        .currentBinLeft(CurrentBinLeft_S2), .currentBinRight(CurrentBinRight_S2), .peakSideIsL(PeakSideIsL_S2), .peakHere(PeakHere_S2), .iirConstPeakFilter,
+    NFInputStage #(.N(N), .BINS(BINS), .OCT(OCT), .BPO(BPO), .PTIIR(PTIIR)) Stage1(.activePeakSlot(ActivePeakSlot_S2), .activeOctave(ActiveOctave_S2), .peaksFinished(PeaksFinished_S2), .doPeakOperation(DoPeakOperation_S2), .clearPeaks(ClearPeaks_S2),
+        .currentBinLeft(CurrentBinLeft_S2), .currentBinRight(CurrentBinRight_S2), .peakSideIsL(PeakSideIsL_S2), .peakHere(PeakHere_S2),
         .binDataFarLeft(BinDataFarLeft_S2), .binDataLeft(BinDataLeft_S2), .binDataRight(BinDataRight_S2), .binDataFarRight(BinDataFarRight_S2),
         .dftBins, .minThreshold, .startCycle, .clk, .rst);
 
@@ -82,23 +81,23 @@ module NoteFinder
         .clk, .rst);
 
     // ==== PIPELINE STAGE 4 BEGIN ====
-    NFAssociateStage #(.N(N), .FPF(FPF)) Stage4(.outNotes(notes), .finished, .newPeaks(NewPeaks_S4), .noteIIRConst(iirConstNotes), .start(PeaksFinished_S4), .clk, .rst);
+    NFAssociateStage #(.N(N), .FPF(FPF), .NIIR(NIIR)) Stage4(.outNotes(notes), .finished, .newPeaks(NewPeaks_S4), .start(PeaksFinished_S4), .clk, .rst);
 endmodule
 
+// Cleans up the input signals a bit, and detects peaks. Muxes out appropriate data for peak placement in the next stage.
 module NFInputStage
-#(parameter N, parameter BINS, parameter OCT, parameter BPO)
+#(parameter N, parameter BINS, parameter OCT, parameter BPO, parameter PTIIR)
 (
-    output logic [3:0] activePeakSlot,
-    output logic [$clog2(OCT)-1:0] activeOctave,
-    output logic peaksFinished, doPeakOperation, clearPeaks,
-    output logic [$clog2(BINS)-1:0] currentBinLeft, currentBinRight,
-    output logic peakSideIsL, peakHere,
-    output logic [N-1:0] binDataFarLeft, binDataLeft, binDataRight, binDataFarRight,
+    output logic [3:0] activePeakSlot, // which peak we're working on
+    output logic [$clog2(OCT)-1:0] activeOctave, // which octave we're working on
+    output logic peaksFinished, doPeakOperation, clearPeaks, // some control signals for later stages in the pipeline
+    output logic [$clog2(BINS)-1:0] currentBinLeft, currentBinRight, // the index of the pai of bins we're looking at now
+    output logic peakSideIsL, peakHere, // whether there is a peak in this pair of bins, and on which side it is
+    output logic [N-1:0] binDataFarLeft, binDataLeft, binDataRight, binDataFarRight, // data for our pair of bins, as well as the ones to the left and right of them
 
-    input logic [4:0] iirConstPeakFilter,
     input logic unsigned [N-1:0] dftBins [0:BINS-1], // the inputs from the DFT
     input logic [N-1:0] minThreshold, // the minimum size peaks must be to even be considered as a potential note
-    input logic startCycle,
+    input logic startCycle, // signal from the DFT to tell us we should start processing data
     input logic clk, rst
 );
     genvar i;
@@ -111,10 +110,9 @@ module NFInputStage
     FindMax120Approx #(.N(N)) MaxFinder(.maxValue(OverallMaxBinVal), .values(dftBins)); // TODO swap for other input
 
     // Determine minimum threshold for peaks
-    // TODO: Tweak this as needed
     logic IIRActive;
     logic [N-1:0] PeakThresholdFromIIR, PeakThreshold;
-    FilterIIRAdjustable #(.N(N), .NI(N)) PeakThresholdIIR(.out(PeakThresholdFromIIR), .in(OverallMaxBinVal >>> 3), .iirConst(iirConstPeakFilter), .write('1), .clk, .rst(rst || ~IIRActive));
+    FilterIIR #(.N(N), .NI(N), .IIRCONST(PTIIR)) PeakThresholdIIR(.out(PeakThresholdFromIIR), .in(OverallMaxBinVal >>> 3), .write('1), .clk, .rst(rst || ~IIRActive));
     assign PeakThreshold = (IIRActive ? PeakThresholdFromIIR : '0) | minThreshold;
 
     // TODO Determine if smoothing adjacent bins may help output quality
@@ -196,12 +194,13 @@ module NFInputStage
         end
 endmodule
 
+// Using data on 3 bins at a time, we "place" the peak within the central bin, i.e. we turn a binary "peak/no peak" into a numeric location of _where_ in the bin the peak is
 module NFPeakPlaceStage
 #(parameter N, parameter BPO, parameter FPW, parameter FPF)
 (
-    output logic [(FPW + FPF)-1:0] noteDistPosition, // new
+    output logic [(FPW + FPF)-1:0] noteDistPosition, // the position of the peak after placement
 
-    output logic [3:0] oActivePeakSlot, // old
+    output logic [3:0] oActivePeakSlot, // all below signals are pass-through from previous stage to future pipeline stages
     output logic oPeakSideIsL,
     output logic [N-1:0] oBinDataFarLeft, oBinDataLeft, oBinDataRight, oBinDataFarRight,
 
@@ -248,10 +247,10 @@ endmodule
 module NFPeakMergeStage
 #(parameter N, parameter FPW, parameter FPF)
 (
-    output Note peaksOut [0:11], // new
-    output logic [11:0] foldedBinHasPeak,
+    output Note peaksOut [0:11], // combined peak distributions that are ready for merging into notes
+    output logic [11:0] foldedBinHasPeak, // whather this chromatic note has a peak in any octave, used for debugging and to show on HEX
 
-    output logic oPeaksFinished, // old
+    output logic oPeaksFinished, // everything below this is from previous pipeline stages, registered for future stages
 
     input logic [3:0] iActivePeakSlot,
     input logic iDoPeakOperation, iClearPeaks,
@@ -306,13 +305,12 @@ endmodule
 
 // Associates new peak data into existing notes, or creates new notes if there isn't one. Also decays and disables notes that are no longer present.
 module NFAssociateStage
-#(parameter N, parameter FPF)
+#(parameter N, parameter FPF, parameter NIIR)
 (
-    output Note outNotes [0:11],
-    output logic finished,
-    input Note newPeaks [0:11],
-    input logic [4:0] noteIIRConst,
-    input logic start,
+    output Note outNotes [0:11], // the notes ready for output to the visualizer
+    output logic finished, // asserted for a cycle once notes are finished being processed
+    input Note newPeaks [0:11], // note distribution data from the latest audio sample to process, from the previous stage
+    input logic start, // assert this once data is ready and association should begin
     input logic clk, rst
 );
     localparam ASSDIST = 16'b1111 << (FPF - 5); // Association distance of peak -> note. const 0.47
@@ -335,7 +333,7 @@ module NFAssociateStage
         for(i = 0; i < 12; i++)
         begin: MakeCurrentNoteRegs
             NoteRegister Current(.out(ExistingNotes[i]), .in(AssociatedNotes[i]), .write(RegToExisting), .clk, .rst);
-            NoteIIR OutFilter(.out(AssociatedNotesFiltered[i]), .in(AssociatedNotes[i]), .lastOut(ExistingNotes[i]), .iirConst(noteIIRConst));
+            NoteIIR #(.N(N), .NI(N), .IIRCONST(NIIR)) OutFilter(.out(AssociatedNotesFiltered[i]), .in(AssociatedNotes[i]), .lastOut(ExistingNotes[i]));
             NoteRegister New(.out(AssociatedNotes[i]), .in(CurrentlyAssociating), .write(DoAssociatingWrite && AssociatingWriteLoc == i), .clk, .rst);
             assign AssociatedNotesValid[i] = AssociatedNotes[i].valid;
             assign ExistingNotesValid[i] = ExistingNotes[i].valid;
@@ -519,20 +517,21 @@ module NFAssociateStage
 
 endmodule
 
+// IIR filter for smoothing notes' amplitudes and positions between frames
+// NOTE: combinational! no registers in here!
 module NoteIIR
-#(parameter N = 16, parameter NI = N)
+#(parameter N = 16, parameter NI = N, parameter IIRCONST)
 (
-    output Note out,
-    input Note in, lastOut,
-    input logic [4:0] iirConst
+    output Note out, // the new output
+    input Note in, lastOut // the new input, and what we output last cycle
 );
     logic signed [NI-1:0] diffAmp, diffPos, adjustedAmp, AdjustedPos;
     logic signed [N-1:0] NewOut;
 
     assign diffAmp = in.amplitude - lastOut.amplitude;
     assign diffPos = in.position - lastOut.position;
-    assign adjustedAmp = diffAmp >>> iirConst;
-    assign adjustedPos = diffPos >>> iirConst;
+    assign adjustedAmp = diffAmp >>> IIRCONST;
+    assign adjustedPos = diffPos >>> IIRCONST;
     assign out.amplitude = (in.valid && lastOut.valid) ? (adjustedAmp + lastOut.amplitude) : in.position;
     assign out.position = (in.valid && lastOut.valid) ? (adjustedPos + lastOut.position) : in.position;
     assign out.valid = in.valid;
@@ -557,8 +556,8 @@ endmodule
 module FindMax120
 #(parameter N = 16)
 (
-    output logic unsigned [N-1:0] maxValue,
-    input logic unsigned [N-1:0] values [0:119]
+    output logic unsigned [N-1:0] maxValue, // the biggest value on the inputs
+    input logic unsigned [N-1:0] values [0:119] // the values to search within for the biggest peak
 );
     logic unsigned [N-1:0] Level1 [0:59], Level2 [0:29], Level3 [0:14], Level4 [0:6], Level5 [0:2], Level6 [0:2], Level7;
     genvar i;
@@ -675,6 +674,7 @@ module PeakWAvg
     end
 endmodule
 
+// Uses a weighted average to merge peaks if they can be merged
 module PeakMergerItr
 #(parameter N = 16)
 (
@@ -712,7 +712,8 @@ module PeakMergerItr
     end
 endmodule
 
-
+// Just a large DFF to hold 1 set of peak data
+// NOTE: only hasPeak gets set to 0 on reset, position and amplitude remain undefined
 module PeakRegister
 #(parameter N = 16)
 (
@@ -755,14 +756,14 @@ module NoteRegister
         end
 endmodule
 
-
+// In charge of generating correct control signals for all note operations
 module NoteOperationManager
 #(parameter OCT = 5)
 (
-    output logic [3:0] activeNoteSlot,
-    output logic [$clog2(OCT)-1:0] activeOctave,
-    output logic finished, doOperation, clearIntermediate,
-    input logic start,
+    output logic [3:0] activeNoteSlot, // which note slot we're writing to
+    output logic [$clog2(OCT)-1:0] activeOctave, // which octave we're processing
+    output logic finished, doOperation, clearIntermediate, // control signals for other parts
+    input logic start, // assert this to start a new processing cycle once DFT data is ready
     input logic clk, rst
 );
     typedef enum { WAIT, ACTIVE, FINISHED, XXX } NoteOpMgrState;

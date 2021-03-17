@@ -6,7 +6,6 @@ module ColorChordTop
     output logic doingRead, // high for 1 clock cycle while we read from the audio buffer
     output logic ledClock, ledData, // output lines to GPIO for LEDs
     input logic signed [15:0] inputSample, // the input audio data
-    input logic [4:0] iirConstPeakFilter, iirConstNotes,
     input logic [15:0] minThreshold,
     input logic sampleReady, // set high when there's fresh audio data ready
     input logic clk, rst
@@ -18,6 +17,8 @@ module ColorChordTop
     localparam LED_FREQ_DIV = 4; // How many times slower is the output driver compared to the system clock. Limited by DE1's output drive circuits.
     localparam LED_WAIT_MULT = 2; // Wait period between sending frames of LED data = 500us * 2 ^ WaitMultiplier - 1. Must be at least 500us, but above 800us appears to work better.
     localparam LED_QTY = 50; // How many LEDs are connected on the output.
+    localparam PEAK_THRES_IIR_CONST = 6; // IIR constant to filter out quiet noise between peaks. Higher is stronger filtering.
+    localparam NOTE_IIR = 7; // IIR constant to filter note positions and amplitudes. Higher is stronger filtering.
 
     localparam TOTAL_BINS = BINS_PER_OCTAVE * OCTAVE_COUNT;
     localparam DFT_BIN_WIDTH = (DATA_WIDTH * 2) + (OCTAVE_COUNT - 1);
@@ -48,8 +49,8 @@ module ColorChordTop
 		if(rst) DelayLine <= '0;
 		else DelayLine <= (DelayLine << 1) | DoingSampleRead;
 
-    NoteFinder #(.N(DATA_WIDTH), .BPO(BINS_PER_OCTAVE), .OCT(OCTAVE_COUNT), .BINS(TOTAL_BINS))
-        TheNF(.notes, .peaksOut(peaksForDebug), .iirConstPeakFilter, .iirConstNotes, .minThreshold, .finished(NoteFinderFinished), .dftBins(DFTBinsSmall), .startCycle(DelayLine[3]), .clk, .rst);
+    NoteFinder #(.N(DATA_WIDTH), .BPO(BINS_PER_OCTAVE), .OCT(OCTAVE_COUNT), .BINS(TOTAL_BINS), .PTIIR(PEAK_THRES_IIR_CONST), .NIIR(NOTE_IIR))
+        TheNF(.notes, .peaksOut(peaksForDebug), .minThreshold, .finished(NoteFinderFinished), .dftBins(DFTBinsSmall), .startCycle(DelayLine[3]), .clk, .rst);
 
     // ==== Linear Visualizer ====
     logic StartLEDDriver;

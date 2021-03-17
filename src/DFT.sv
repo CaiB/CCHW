@@ -55,6 +55,7 @@ endmodule
 // NS is trig table address width
 // NT is for trig value width
 // OID is octave index
+// Houses storage, math processing, and control of 1 octave
 module OctaveManager
 #(parameter BINS = 24, parameter SIZE = 8192, parameter N = 16, parameter NT = 16, parameter NO = 32, parameter NS = 6, parameter OID = 0)
 (
@@ -85,7 +86,7 @@ module OctaveManager
     logic signed [SUMSIZE-1:0] SinSum [0:BINS-1], CosSum [0:BINS-1]; // The current cumulative sum of all samples' sin/cos products
     logic signed [SUMSIZE-1:0] AbsSinSum, AbsCosSum;
 
-    always_comb
+    always_comb // Combinational outputs
     begin
         SampleOperand = mathOp ? sample0 : oldestSample;
         SinProd = sinData * SampleOperand;
@@ -116,6 +117,7 @@ module OctaveManager
     end
 endmodule
 
+// Generates control signals for other modules to synchronize behaviour of all octaves
 module OperationManager
 #(parameter OCT = 5, BINS = 24)
 (
@@ -176,6 +178,8 @@ module OperationManager
     end
 endmodule
 
+// Determines which octaves are active for this input sample
+// Not all octaves are processing every sample
 module OctaveSelector
 #(parameter OCT = 5)
 (
@@ -254,7 +258,7 @@ module OctaveStorageRAM
     OctStorageState Present, Next;
 
     logic [$clog2(SIZE)-1:0] Address;
-    logic DataValid, Filled; // Filled indicates we;re about to complete the first write pass. DataValid becomes true once we are ready to read back at address 0.
+    logic DataValid, Filled; // Filled indicates we're about to complete the first write pass. DataValid becomes true once we are ready to read back at address 0.
     logic [N-1:0] RAMOut, RAMIn, OldRegOut;
     logic RAMWrite;
     assign RAMIn = sample0; //newSample;
@@ -334,19 +338,3 @@ module SampleRegister
         if(rst) out <= '0;
         else out <= en ? in : out;
 endmodule
-
-
-// Normal operation spacing
-// 1111 1111 1111 1111
-//  2 2  2 2  2 2  2 2
-//    3    3    3    3
-//         4         4
-//                   5
-
-// Condensed operation spacing
-// 1111 1111 1111 1111
-// 32 2 3242 3252 3242
-
-// Great for CPUs where cycles are limited, but not so important here
-// Except maybe in low-power system where we want to elimite peak loads when many operations happen at once?
-// TODO: Consider operation spacing options
