@@ -1,10 +1,13 @@
 module LEDCountCalc #(
-    parameter W = 6,                        // max whole value 63
-    parameter D = 10,                       // decimal precision to ~.001
+    parameter W = 6,                        // number of whole bits in the fixed point format
+    parameter D = 10,                       // number of decimal  bits in the fixed point format - precision to ~.001
+    parameter LEDS = 50,                    // total which the individual counts should sum to
+    parameter BIN_QTY  = 12                 // number of independant notes being processed
 
-    parameter LEDS = 50,
-    parameter LEDS_X = 20,                  // 0.0195... ~ 20 ~ 0000010100 
-    parameter BIN_QTY  = 12
+    // =============== Fixed Point Specific Parameters ===============
+    // The following parameters are computed based on the above parameters W and D. 
+    // See LinearVisualizer.sv : line 24 for instruction on how to recompute
+    parameter LEDS_X = 20,                  // 0.0195... ~ 20 ~ 0000010100
 ) (
     output logic [BIN_QTY - 1 : 0][$clog2(LEDS) - 1 : 0] LEDCount,  // count for the final value doesn't matter
     output logic data_v,
