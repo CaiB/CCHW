@@ -35,18 +35,18 @@ module ColorCalc #(
     // propogates the start signal so that the done signal goes high after 3 cycles
     logic [2:0] valid_delay;
 
-    // =============== cycle 1 outputs and registers ===============
+    // =============== cycle 0 outputs and registers ===============
     logic unsigned [D + D - 1 : 0] hueDivided;
     logic unsigned [D - 1 : 0] hueWhole, hueWhole_d1, hueWhole_d2;
     logic unsigned [D - 1 : 0] hueDec, hueDec_d1;
 
-    // =============== cycle 2 outputs and registers ===============
+    // =============== cycle 1 outputs and registers ===============
     logic unsigned [W + D - 1 : 0] noteAmplitude;
     logic unsigned [W + D - 1 + (1 + D): 0] noteAmplitudeMult;    // multiplied by 11 bit param SaturationAmplifier (1 whole 10 dec)
     logic unsigned [D - 1 : 0] noteAmplitudeDec;
     logic unsigned [D - 1 : 0] noteAmplitudeLimited, noteAmplitudeLimited_d1, noteAmplitudeLimited_d2;
 
-    // =============== cycle 3 outputs and registers ===============
+    // =============== cycle 2 outputs and registers ===============
     logic unsigned [D + D - 1 : 0] colorValueXHue, colorValueXHuex;
     logic unsigned [7 : 0] colorValueMax;
     logic unsigned [7 : 0] colorValueXHue_d1, colorValueXHuex_d1;
