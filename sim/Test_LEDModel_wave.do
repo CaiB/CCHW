@@ -1,16 +1,16 @@
 onerror {resume}
 quietly WaveActivateNextPane {} 0
-add wave -noupdate -radix hexadecimal /LEDModel_testbench/rgb
-add wave -noupdate /LEDModel_testbench/SDO
-add wave -noupdate /LEDModel_testbench/CKO
-add wave -noupdate /LEDModel_testbench/SDI
-add wave -noupdate /LEDModel_testbench/CKI
-add wave -noupdate -expand -group internal -radix hexadecimal /LEDModel_testbench/dut/latchedReg
-add wave -noupdate -expand -group internal -radix hexadecimal /LEDModel_testbench/dut/shiftReg
-add wave -noupdate -expand -group internal -radix unsigned /LEDModel_testbench/dut/latchCntr
-add wave -noupdate -expand -group internal -radix unsigned /LEDModel_testbench/dut/relayCntr
-add wave -noupdate -expand -group internal /LEDModel_testbench/dut/relayMode
-add wave -noupdate -expand -group internal /LEDModel_testbench/dut/osc
+add wave -noupdate -radix hexadecimal /Test_LEDModel/rgb
+add wave -noupdate /Test_LEDModel/SDO
+add wave -noupdate /Test_LEDModel/CKO
+add wave -noupdate /Test_LEDModel/SDI
+add wave -noupdate /Test_LEDModel/CKI
+add wave -noupdate -expand -group internal -radix hexadecimal /Test_LEDModel/dut/latchedReg
+add wave -noupdate -expand -group internal -radix hexadecimal /Test_LEDModel/dut/shiftReg
+add wave -noupdate -expand -group internal -radix unsigned /Test_LEDModel/dut/latchCntr
+add wave -noupdate -expand -group internal -radix unsigned /Test_LEDModel/dut/relayCntr
+add wave -noupdate -expand -group internal /Test_LEDModel/dut/relayMode
+add wave -noupdate -expand -group internal /Test_LEDModel/dut/osc
 TreeUpdate [SetDefaultTree]
 WaveRestoreCursors {{Cursor 1} {207 ps} 0}
 quietly wave cursor active 1

@@ -6,6 +6,7 @@ module FilterIIR
 (
     output logic signed [N-1:0] out,
     input logic signed [N-1:0] in,
+    input logic write,
     input logic clk, rst
 );
     logic signed [NI-1:0] diff, adjusted;
@@ -17,15 +18,27 @@ module FilterIIR
 
     always_ff @(posedge clk)
         if(rst) out <= '0;
-        else out <= NewOut;
+        else if(write) out <= NewOut;
 endmodule
 
+// Takes more device resources but makes testing filter values much faster.
+module FilterIIRAdjustable
+#(parameter N = 16, parameter NI = N)
+(
+    output logic signed [N-1:0] out,
+    input logic signed [N-1:0] in,
+    input logic [4:0] iirConst,
+    input logic write,
+    input logic clk, rst
+);
+    logic signed [NI-1:0] diff, adjusted;
+    logic signed [N-1:0] NewOut;
 
-module Test_FilterIIR;
-    localparam N = 16;
-    localparam CONST = 6;
-    logic signed [N-1:0] out, in;
-    logic clk, rst;
+    assign diff = in - out;
+    assign adjusted = diff >>> iirConst;
+    assign NewOut = adjusted + out;
 
-    // TODO Test filter
+    always_ff @(posedge clk)
+        if(rst) out <= '0;
+        else if(write) out <= NewOut;
 endmodule

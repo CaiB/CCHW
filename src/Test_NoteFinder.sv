@@ -1,3 +1,4 @@
+import CCHW::*;
 module Test_FindMax120;
     localparam N = 16;
     localparam BINS = 120;
@@ -218,11 +219,11 @@ module Test_NoteOperationManager;
     localparam OCT = 5;
     logic [3:0] activeNoteSlot;
     logic [$clog2(OCT)-1:0] activeOctave;
-    logic finished, doOperation;
+    logic finished, doOperation, clearIntermediate;
     logic start;
     logic clk, rst;
 
-    NoteOperationManager #(.OCT(OCT)) DUT(.activeNoteSlot, .activeOctave, .finished, .doOperation, .start, .clk, .rst);
+    NoteOperationManager #(.OCT(OCT)) DUT(.activeNoteSlot, .activeOctave, .finished, .clearIntermediate, .doOperation, .start, .clk, .rst);
 
     initial
     begin
@@ -261,18 +262,26 @@ module Test_NoteFinder;
     localparam OCT = 5;
     localparam BINS = BPO * OCT;
     localparam FPF = 11;
+
+    Note notes [0:11];
+    logic [11:0] peaksOut;
+    logic finished;
+    logic [4:0] iirConstPeakFilter;
     logic unsigned [N-1:0] dftBins [0:BINS-1];
+    logic [9:0] minThreshold;
     logic startCycle;
     logic clk, rst;
-    NoteFinder #(.N(N), .BPO(BPO), .OCT(OCT)) DUT(.dftBins, .startCycle, .clk, .rst);
 
-    real SavedPeakPositionsR [0:11];
+    NoteFinder #(.N(N), .BPO(BPO), .OCT(OCT)) DUT(.notes, .peaksOut, .finished, .iirConstPeakFilter, .dftBins, .minThreshold, .startCycle, .clk, .rst);
+
+    real NewPeaks_S4R [0:11], OutNotesR [0:11];
 
     genvar i;
     generate
         for(i = 0; i < 12; i++)
         begin
-            assign SavedPeakPositionsR[i] = (DUT.SavedPeakPositions[i] * (2.0 ** -FPF));
+            assign NewPeaks_S4R[i] = (DUT.NewPeaks_S4[i].position * (2.0 ** -FPF));
+            assign OutNotesR[i] = (notes[i].position * (2.0 ** -FPF));
         end
     endgenerate
 
@@ -285,6 +294,8 @@ module Test_NoteFinder;
     task Reset;
         dftBins = '{default:0};
         startCycle = '0;
+        iirConstPeakFilter = '0;
+        minThreshold = '0;
         rst = '1;
         repeat(5) @(posedge clk);
         rst = '0; @(posedge clk);
@@ -306,13 +317,6 @@ module Test_NoteFinder;
     end
 endmodule
 
-typedef struct packed
-{
-    logic [15:0] position;
-    logic [15:0] amplitude;
-    logic valid;
-} Note;
-
 module Test_NoteAssociator;
     localparam FPF = 10;
     localparam N = 16;
@@ -322,8 +326,8 @@ module Test_NoteAssociator;
     Note newPeaks [0:11];
     logic start;
     logic clk, rst;
-    
-    NoteAssociator #(.N(N), .FPF(FPF)) DUT(.outNotes, .finished, .newPeaks, .start, .clk, .rst);
+
+    NFAssociateStage #(.N(N), .FPF(FPF)) DUT(.outNotes, .finished, .newPeaks, .start, .clk, .rst);
 
     int Whole;
     real Fractional;

@@ -4,6 +4,7 @@ add wave -noupdate /Test_NoteOperationManager/clk
 add wave -noupdate /Test_NoteOperationManager/rst
 add wave -noupdate /Test_NoteOperationManager/start
 add wave -noupdate /Test_NoteOperationManager/doOperation
+add wave -noupdate /Test_NoteOperationManager/clearIntermediate
 add wave -noupdate -radix unsigned /Test_NoteOperationManager/activeOctave
 add wave -noupdate -radix unsigned /Test_NoteOperationManager/activeNoteSlot
 add wave -noupdate /Test_NoteOperationManager/finished
@@ -24,4 +25,4 @@ configure wave -griddelta 40
 configure wave -timeline 0
 configure wave -timelineunits ps
 update
-WaveRestoreZoom {0 ps} {8 ns}
+WaveRestoreZoom {70850 ps} {78850 ps}

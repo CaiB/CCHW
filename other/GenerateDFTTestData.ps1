@@ -94,9 +94,10 @@ module Test_DFT;
     logic unsigned [35:0] outBins [0:BINCOUNT-1];
     logic signed [15:0] inputSample;
     logic sampleReady;
+    logic doingRead;
     logic clk, rst;
 
-    DFT #(.BPO(24), .OC(5), .N(16), .TOPSIZE(8192)) DFTDUT(.outBins, .inputSample, .sampleReady, .clk, .rst);
+    DFT #(.BPO(24), .OC(5), .N(16), .TOPSIZE(8192)) DFTDUT(.outBins, .inputSample, .doingRead, .sampleReady, .clk, .rst);
 
     logic signed [15:0] InputData [0:LEN-1];
     initial `$readmemh("../other/dfttestdata.txt", InputData);

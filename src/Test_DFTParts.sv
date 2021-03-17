@@ -8,6 +8,7 @@ module Test_OperationManager;
     logic ready; // asserted while we are ready and waiting for an audio sample
     logic writeSample; // asserted for 1 cycle before processing to write the sample into each octave
     logic finishedProcessing; // asserted for 1 clock cycle after the current sample is done being processed
+    logic doCalculations;
 
     logic sampleReady;
     logic clk, rst;

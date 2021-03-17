@@ -12,6 +12,7 @@ module NoteFinder
     output Note notes [0:11], // the smoothed notes we processed
     output logic [11:0] peaksOut, // mostly for debugging purposes, whether folded bins had a peak at the index
     output logic finished, // asserted for 1 cycle once processing is completed and note data is stable
+    input logic [4:0] iirConstPeakFilter,
     input logic unsigned [N-1:0] dftBins [0:BINS-1], // the inputs from the DFT
     input logic [9:0] minThreshold, // the minimum size peaks must be to even be considered as a potential note
     input logic startCycle, // set this high for a cycle when the DFT has finished processing bins
@@ -30,7 +31,7 @@ module NoteFinder
     logic [N-1:0] BinDataFarLeft_S2, BinDataLeft_S2, BinDataRight_S2, BinDataFarRight_S2;
 
     NFInputStage #(.N(N), .BINS(BINS), .OCT(OCT), .BPO(BPO)) Stage1(.activePeakSlot(ActivePeakSlot_S2), .activeOctave(ActiveOctave_S2), .peaksFinished(PeaksFinished_S2), .doPeakOperation(DoPeakOperation_S2), .clearPeaks(ClearPeaks_S2),
-        .currentBinLeft(CurrentBinLeft_S2), .currentBinRight(CurrentBinRight_S2), .peakSideIsL(PeakSideIsL_S2), .peakHere(PeakHere_S2),
+        .currentBinLeft(CurrentBinLeft_S2), .currentBinRight(CurrentBinRight_S2), .peakSideIsL(PeakSideIsL_S2), .peakHere(PeakHere_S2), .iirConstPeakFilter,
         .binDataFarLeft(BinDataFarLeft_S2), .binDataLeft(BinDataLeft_S2), .binDataRight(BinDataRight_S2), .binDataFarRight(BinDataFarRight_S2),
         .dftBins, .minThreshold, .startCycle, .clk, .rst);
 
@@ -94,6 +95,7 @@ module NFInputStage
     output logic peakSideIsL, peakHere,
     output logic [N-1:0] binDataFarLeft, binDataLeft, binDataRight, binDataFarRight,
 
+    input logic [4:0] iirConstPeakFilter,
     input logic unsigned [N-1:0] dftBins [0:BINS-1], // the inputs from the DFT
     input logic [9:0] minThreshold, // the minimum size peaks must be to even be considered as a potential note
     input logic startCycle,
@@ -111,8 +113,9 @@ module NFInputStage
 
     // Determine minimum threshold for peaks
     // TODO: Tweak this as needed
+    // TODO reintroduce minThreshold?
     logic [N-1:0] PeakThreshold;
-    assign PeakThreshold = (OverallMaxBinVal >>> 3) | {minThreshold, '0};
+    FilterIIRAdjustable #(.N(N), .NI(N)) PeakThresholdIIR(.out(PeakThreshold), .in(OverallMaxBinVal >>> 3), .iirConst(iirConstPeakFilter), .write('1), .clk, .rst);
 
     // TODO Smooth adjacent bins (needed?)
 
@@ -567,7 +570,7 @@ endmodule
 // Inputting a best case peak value of some number of 0 bits followed by contiguous 1 bits, this will output the precise peak
 // Chances are that it'll usually be pretty close, since there is often more than 1 reasonably large peak, and as such most of the bits under the main peaks' leading 1 will be filled with 1s
 // Therefore it's safe to assume the output is about 1.5-2.0x as large as the largest peak
-module FindMax120Approx // TODO This is at the very least moderately hideous. Could probably make a recursive one that operates on 2^n sizes and assume the rest is synthesized away.
+module FindMax120Approx
 #(parameter N = 16)
 (
     output logic unsigned [N-1:0] maxValue, // an approximation of the biggest value on the inputs (see notes above)
