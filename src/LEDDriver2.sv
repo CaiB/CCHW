@@ -1,7 +1,7 @@
 import CCHW::*;
 
 /*  The LEDDriver2 is an improvment on the LEDDriver which is no longer used in the project
-*   LEDDriver2 serializes color words (24 bit) and organizes them into frames each "LEDS" words long
+*   LEDDriver2 serializes color words (24 bit RGB) and organizes them into frames each "LEDS" words long
 *   Frames are spaced by a minimum 500us to meet the spec of the WS2801 LED Driver recieving the color data
 *   Each serielized data bit is sent with a parallel clock signal rising a half cycle after the data signal
 *    is set so that the WS2801 LED Driver captures the bit
