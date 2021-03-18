@@ -3,9 +3,10 @@ vlib work
 
 # Source and Testbench files
 vlog -work work "../src/HueCalc.sv"
+vlog -work work "../src/Test_HueCalc.sv"
 
 # Call simulator
-vsim -voptargs="+acc" -t 1ps -lib work HueCalc_testbench
+vsim -voptargs="+acc" -t 1ps -lib work Test_HueCalc
 
 # Source the wave file
 do Test_HueCalc_wave.do

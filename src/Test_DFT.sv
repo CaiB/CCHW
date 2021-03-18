@@ -45,7 +45,7 @@ module Test_DFT;
             sampleReady = '0;
             repeat(250) @(posedge clk);
             if(i < 20 || i % 500 == 0) $display("Sample %4d finished", i);
-            if(i == 20) $display("Slowing output to every 500 samples...");
+            if(i == 20) $display("[INFO] Slowing console output to once every 500 samples.");
 
             for(int j = 0; j < BINCOUNT; j++) FileLine = $sformatf("%s%0d,", FileLine, outBins[j]);
             $fwrite(FileHandle, "%s\n", FileLine);
