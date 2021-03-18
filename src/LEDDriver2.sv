@@ -113,10 +113,9 @@ module LEDDriver2 #(
                     SerialCntr <= {5'd23,{FD_LOG{1'b1}}};
 
                     // decrement the remaining frame word count and the current color word count after a load
-                    if (ps == LOAD_S) begin 
-                        ColorCount <= ColorCount - 1;
-                        LEDCountsRegistered[BinCntr] <= LEDCountsRegistered[BinCntr] - 1;
-                    end
+                    if (ps == LOAD_S) ColorCount <= ColorCount - 1;
+                    LEDCountsRegistered[BinCntr] <= LEDCountsRegistered[BinCntr] - 1;
+
 
                     // if the color count is depleted increment the iterator - move to the next color
                     if (LEDCountsRegistered[BinCntr] == 0) BinCntr <= BinCntr + 1;

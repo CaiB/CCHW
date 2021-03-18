@@ -148,7 +148,6 @@ endmodule
 module LEDStripDriver_testbench();
 
     localparam TB_LEDS = 5;             // number of LEDs
-
     localparam TB_FREQ = 12_500_000;
     localparam TB_PERIOD =  80ps;
 

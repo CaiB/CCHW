@@ -10,12 +10,13 @@ module LVDriver #(
     parameter FREQ = 12_000_000,            
 
     // these assume the W and D above, use fixedPointCalculator.py to recalculate if needed
-    parameter LEDFloor = 102,               // 0.0996... ~ 102 ~ 0001100110 - sets the relative threshold value for amplitudes to be considered 
-    parameter LEDLimit = 1023,              // ~1.0 ~ 1023 ~ 1111111111 - sets the final hue amplitude upper limit 
-    parameter SaturationAmplifier = 1638,   // 1.599.. ~ 1638 ~ 1_1111000000 - scales the hue amplitude up to the LEDLimit
-    parameter yellowToRedSlope  = 21824,    // 21.3125 ~  21824 ~  'b10101_0101000000 ~ 1/48 of hue range (1024) - a slope of the "circular" piecewsie hue mapper
-    parameter redToBlueSlope    = 43648,    // 42.625  ~  41600 ~ 'b101010_1010000000 ~ 1/24 of hue range (1024) - a slope of the "circular" piecewise hue mapper
-    parameter blueToYellowSlope = 65472     // 63.9375 ~ 130944 ~ 'b111111_1111000000 ~ 1/16 of hue range (1024) - a slope of the "circular" piecewise hue mapper
+    parameter LEDFloor = 205,               // 0.100... ~ 205 ~ 00011001101 - sets the relative threshold value for amplitudes to be considered 
+    parameter LEDLimit = 2047,              // ~1.0 ~ 2047 ~ 11111111111 - sets the final hue amplitude upper limit 
+    parameter SaturationAmplifier = 3277,   // 1.6000.. ~ 3277 ~ 1_10011001101 - scales the hue amplitude up to the LEDLimit
+    parameter LEDS_X = 41,                  // 0.02001.. ~ 41 ~ 00000101001 - inverse of LEDS
+    parameter yellowToRedSlope  = 43648,    // 21.3125 ~  43648 ~  'b10101_01010000000 ~ 1/48 of hue range (1024) - a slope of the "circular" piecewsie hue mapper
+    parameter redToBlueSlope    = 87296,    // 42.625  ~  87296 ~ 'b101010_10100000000 ~ 1/24 of hue range (1024) - a slope of the "circular" piecewise hue mapper
+    parameter blueToYellowSlope = 130944     // 63.9375 ~ 130944 ~ 'b111111_11110000000 ~ 1/16 of hue range (1024) - a slope of the "circular" piecewise hue mapper
 ) (
     output logic dOut, clkOut,
     output logic done,
@@ -58,7 +59,7 @@ module LVDriver #(
         .LEDS               (LEDS           ),
         .BIN_QTY            (BIN_QTY        ),
         .steadyBright       (steadyBright   ),
-        .LEDFloor           (102            ),
+        .LEDFloor           (205            ),
         .LEDLimit           (LEDLimit       ),
         .SaturationAmplifier(SaturationAmplifier),
         .yellowToRedSlope   (yellowToRedSlope   ),

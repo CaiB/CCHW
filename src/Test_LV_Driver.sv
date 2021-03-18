@@ -9,7 +9,7 @@ module Test_LV_Driver;
     parameter steadyBright = 'b0;           // False
 
     // these assume the W and D above, use fixedPointCalculator.py to recalculate if needed
-    parameter LEDFloor = 102;               // 0.0996... ~ 102 ~ 0001100110
+    parameter LEDFloor = 205;               // 0.100... ~ 205 ~ 00011001101 - sets the relative threshold value for amplitudes to be considered 
     parameter LEDLimit = 1023;              // ~1.0 ~ 1023 ~ 1111111111
     parameter SaturationAmplifier = 1638;   // 1.599.. ~ 1638 ~ 1_1111000000
     parameter yellowToRedSlope  = 21824;    // 21.3125 ~  21824 ~  'b10101_0101000000

@@ -2,19 +2,10 @@ import CCHW::*;
 
 module Test_LinearVisualizer;
 
-    parameter W = 6;                        // max whole value 63
-    parameter D = 10;                       // decimal precision to ~.001
-    parameter LEDS  = 50;                   // number of LEDs being drivern
+    parameter W = 5;
+    parameter D = 11;
+    parameter LEDS = 50;
     parameter BIN_QTY = 12;
-    parameter steadyBright = 'b0;
-   
-    parameter LEDFloor = 102;
-    parameter LEDLimit = 1023;
-    parameter SaturationAmplifier = 1638;
-    parameter yellowToRedSlope  = 21824; 
-    parameter redToBlueSlope    = 43648;
-    parameter blueToYellowSlope = 65472;
-
     parameter TB_PERIOD = 100ns;
 
     logic [BIN_QTY - 1 : 0][23 : 0] rgb;
@@ -35,17 +26,6 @@ module Test_LinearVisualizer;
     end
 
     LinearVisualizer #(
-        .W                  (W              ),
-        .D                  (D              ),
-        .LEDS               (LEDS           ),
-        .BIN_QTY            (BIN_QTY        ),
-        .steadyBright       (steadyBright   ),
-        .LEDFloor           (102            ),
-        .LEDLimit           (LEDLimit       ),
-        .SaturationAmplifier(SaturationAmplifier),
-        .yellowToRedSlope   (yellowToRedSlope   ),
-        .redToBlueSlope     (redToBlueSlope     ),
-        .blueToYellowSlope  (blueToYellowSlope  )
     ) dut (
         .rgb            (rgb            ),
         .LEDCounts      (LEDCounts      ),
@@ -80,7 +60,7 @@ module Test_LinearVisualizer;
 
             for (i = 0; i < BIN_QTY; i++) begin
                 notes[i].amplitude = amplitudes[i];
-                notes[i].position = 24 *positions[i];
+                notes[i].position = positions[i];
                 notes[i].valid = '1;
             end
 
