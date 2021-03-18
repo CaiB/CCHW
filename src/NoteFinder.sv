@@ -49,7 +49,7 @@ module NoteFinder
         .clk, .rst);
     
     // Other signals not used this stage but pipelined onwards
-    always_ff @(posedge clk)
+    always_ff @(posedge clk, posedge rst)
         if(rst)
         begin
             PeaksFinished_S3 <= '0;
@@ -157,7 +157,7 @@ module NFInputStage
     end
 
     // Registers to delay signals for stage 2
-    always_ff @(posedge clk)
+    always_ff @(posedge clk, posedge rst)
         if(rst)
         begin
             IIRActive <= '0;
@@ -221,7 +221,7 @@ module NFPeakPlaceStage
         .here (iPeakSideIsL ? iBinDataLeft    : iBinDataRight));
     
     // Registers to delay signals for stage 3
-    always_ff @(posedge clk)
+    always_ff @(posedge clk, posedge rst)
         if(rst)
         begin
             oActivePeakSlot <= '0;
@@ -298,7 +298,7 @@ module NFPeakMergeStage
     assign foldedBinHasPeak = RegPeaksValid;
     assign peaksOut = NewPeaks;
 
-    always_ff @(posedge clk)
+    always_ff @(posedge clk, posedge rst)
         if(rst) oPeaksFinished <= '0;
         else oPeaksFinished <= iPeaksFinished;
 endmodule
@@ -724,7 +724,7 @@ module PeakRegister
     input logic write,
     input logic clk, rst
 );
-    always_ff @(posedge clk)
+    always_ff @(posedge clk, posedge rst)
         if(rst) hasPeak <= '0;
         else
         begin
@@ -746,7 +746,7 @@ module NoteRegister
     input logic write,
     input logic clk, rst
 );
-    always_ff @(posedge clk)
+    always_ff @(posedge clk, posedge rst)
         if(rst) out.valid <= '0;
         else if(write)
         begin
@@ -770,11 +770,11 @@ module NoteOperationManager
     NoteOpMgrState Present, Next;
     logic [1:0] WaitCounter;
 
-    always_ff @(posedge clk) // State register
+    always_ff @(posedge clk, posedge rst) // State register
         if(rst) Present <= WAIT;
         else Present <= Next;
     
-    always_ff @(posedge clk) // Timer register
+    always_ff @(posedge clk, posedge rst) // Timer register
         if(rst) WaitCounter <= '0;
         else if(Present == ACTIVE) WaitCounter <= WaitCounter + 1'b1;
 
@@ -798,9 +798,14 @@ module NoteOperationManager
         clearIntermediate = (Present == WAIT) && start;
     end
 
-    always_ff @(posedge clk) // Registered outputs
+    always_ff @(posedge clk, posedge rst) // Registered outputs
     begin
-        if(rst | finished)
+        if(rst)
+        begin
+            activeNoteSlot <= '0;
+            activeOctave <= '0;
+        end
+        else if(finished)
         begin
             activeNoteSlot <= '0;
             activeOctave <= '0;

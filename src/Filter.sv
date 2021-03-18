@@ -16,7 +16,7 @@ module FilterIIR
     assign adjusted = diff >>> IIRCONST;
     assign NewOut = adjusted + out;
 
-    always_ff @(posedge clk)
+    always_ff @(posedge clk, posedge rst)
         if(rst) out <= '0;
         else if(write) out <= NewOut;
 endmodule
@@ -38,7 +38,7 @@ module FilterIIRAdjustable
     assign adjusted = diff >>> iirConst;
     assign NewOut = adjusted + out;
 
-    always_ff @(posedge clk)
+    always_ff @(posedge clk, posedge rst)
         if(rst) out <= '0;
         else if(write) out <= NewOut;
 endmodule
