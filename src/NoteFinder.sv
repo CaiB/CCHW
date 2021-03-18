@@ -86,7 +86,7 @@ endmodule
 
 // Cleans up the input signals a bit, and detects peaks. Muxes out appropriate data for peak placement in the next stage.
 module NFInputStage
-#(parameter N, parameter BINS, parameter OCT, parameter BPO, parameter PTIIR)
+#(parameter N = 16, parameter BINS = 120, parameter OCT = 5, parameter BPO = 24, parameter PTIIR = 5)
 (
     output logic [3:0] activePeakSlot, // which peak we're working on
     output logic [$clog2(OCT)-1:0] activeOctave, // which octave we're working on
@@ -196,7 +196,7 @@ endmodule
 
 // Using data on 3 bins at a time, we "place" the peak within the central bin, i.e. we turn a binary "peak/no peak" into a numeric location of _where_ in the bin the peak is
 module NFPeakPlaceStage
-#(parameter N, parameter BPO, parameter FPW, parameter FPF)
+#(parameter N = 16, parameter BPO = 24, parameter FPW = 5, parameter FPF = 11)
 (
     output logic [(FPW + FPF)-1:0] noteDistPosition, // the position of the peak after placement
 
@@ -245,7 +245,7 @@ module NFPeakPlaceStage
 endmodule
 
 module NFPeakMergeStage
-#(parameter N, parameter FPW, parameter FPF)
+#(parameter N = 16, parameter FPW = 5, parameter FPF = 11)
 (
     output Note peaksOut [0:11], // combined peak distributions that are ready for merging into notes
     output logic [11:0] foldedBinHasPeak, // whather this chromatic note has a peak in any octave, used for debugging and to show on HEX
@@ -305,7 +305,7 @@ endmodule
 
 // Associates new peak data into existing notes, or creates new notes if there isn't one. Also decays and disables notes that are no longer present.
 module NFAssociateStage
-#(parameter N, parameter FPF, parameter NIIR)
+#(parameter N = 16, parameter FPF = 5, parameter NIIR = 7)
 (
     output Note outNotes [0:11], // the notes ready for output to the visualizer
     output logic finished, // asserted for a cycle once notes are finished being processed
@@ -520,7 +520,7 @@ endmodule
 // IIR filter for smoothing notes' amplitudes and positions between frames
 // NOTE: combinational! no registers in here!
 module NoteIIR
-#(parameter N = 16, parameter NI = N, parameter IIRCONST)
+#(parameter N = 16, parameter NI = N, parameter IIRCONST = 7)
 (
     output Note out, // the new output
     input Note in, lastOut // the new input, and what we output last cycle
