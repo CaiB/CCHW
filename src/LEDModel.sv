@@ -1,3 +1,5 @@
+`timescale 1 ps / 1 ps
+
 /* model implementation of the WS2801 3 Channel Constant Current LED Driver
 ** note: only relevant ports are included, color, power and polarity control are omitted 
 ** note: not used in synthesis but only simulation

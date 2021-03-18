@@ -4,6 +4,7 @@ vlib work
 # Source and Testbench files
 vlog -work work "../src/Common.sv"
 vlog -work work +define+RAM_FPGA=1 "../src/DFT.sv"
+vlog -work work "../src/Filter.sv"
 vlog -work work "../src/Test_FullSystem.sv"
 vlog -work work "../src/TrigLUTs.sv"
 vlog -work work "../src/NoteFinder.sv"
@@ -19,6 +20,8 @@ vlog -work work "../src/AmpPreprocessor.sv"
 vlog -work work "../src/LEDCountCalc.sv"
 vlog -work work "../src/ColorCalc.sv"
 vlog -work work "../src/HueCalc.sv"
+vlog -work work "../src/LEDModel.sv"
+
 
 # Call simulator
 vsim -voptargs="+acc" -t 1ps -lib work -Lf altera_mf_ver Test_FullSystem
