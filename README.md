@@ -30,10 +30,10 @@ The Linear Visualizer combines the frequency and amplitude information, and maps
 words of frequency and amplitude data and converts them into an array of 12 unique color values. In order to correctly be interpreted by the LED Driver the Visualizer also has to organize and
 the order and frequency of each of the unique LED words as they should appear on a bar of LEDs.
 
-Testing and configuration of the Linear Visualizer is backed by a series of scripts and an excel sheet, along with the standard set of hdl testbenches. The excel sheet is a rapidly configurable
-master sheet which computes the predicted values of every net and register in the Visualizer as it would be computed using real hardware. This allows us to be able to predict what values are
-expected and accurate which is otherwise difficult because of the representation of floating point numbers in simulation software. The `sim/Test_LinearVisualizer.sv` is the primary testbench for this system and tracks the major signals between the inner modules. `other/LinearVisualizer.xlsx` is the master excel sheet where test data can quickly be prototyped.
-`other/GenerateVisualizerTestData.ps1` produces `testNoteAmplitudes.mem` and `testNotePositions.mem` which is test data used by the testbench. 
+Testing and configuration of the Linear Visualizer is backed by a series of scripts and an excel sheet, along with the standard set of hdl testbenches. The excel sheet, 
+`other/LinearVisualizer.xlsx`, is a rapidly configurable master sheet which computes the predicted values of every net and register in the Visualizer as it would be computed using real hardware. This allows us to be able to predict what values are expected and accurate which is otherwise difficult because of the representation of floating point numbers in simulation software The `sim/Test_LinearVisualizer.sv` is the primary testbench for this system and tracks the major signals between the inner modules. `other/GenerateVisualizerTestData.ps1` utilizes  
+`other/fixedPointCalculator.py` to compute an array of note positions and amplitudes and generate binary values that will be used by the testbench. It produces two files, 
+`other/testNoteAmplitudes.mem` and `other/testNotePositions.mem` which contains teslve 16-bit binary numbers than can quickly be pasted into the excel sheet ot predict data. The Linear Visualizer of course was devloped first using software and is represented by the python file `other/LinearVisualizer.py` which replicated the the c# implementation but simplified and modified for hardware.
 
 ## LED Driver
 The LED Drivers purpose is to interpret the color words and their orginization data and serialize colors in the correct order onto a data line. While this seems relatively simple, our LEDDriver
