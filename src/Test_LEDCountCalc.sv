@@ -1,8 +1,8 @@
 module Test_LEDCountCalc;
     parameter TB_PERIOD = 100ns;
 
-    parameter W = 6;                       // max whole value 63
-    parameter D = 10;                       // decimal precision to ~.001
+    parameter W = 5;                       // max whole value 63
+    parameter D = 11;                       // decimal precision to ~.001
     parameter LEDS = 50;
     parameter BIN_QTY  = 12;
 
@@ -38,19 +38,19 @@ module Test_LEDCountCalc;
 
     task test_input();
         begin
-            noteAmplitudes_i[ 0] = 16'b0000110101001010;
-            noteAmplitudes_i[ 1] = 16'b0000000000000000;
-            noteAmplitudes_i[ 2] = 16'b0000000000000000;
-            noteAmplitudes_i[ 3] = 16'b0000000000000000;
+            noteAmplitudes_i[ 0] = 16'b1001100110000000;
+            noteAmplitudes_i[ 1] = 16'b1001100110000000;
+            noteAmplitudes_i[ 2] = 16'b1001100110000000;
+            noteAmplitudes_i[ 3] = 16'b1001100110000000;
             noteAmplitudes_i[ 4] = 16'b0000000000000000;
-            noteAmplitudes_i[ 5] = 16'b0000000101001010;
-            noteAmplitudes_i[ 6] = 16'b0000110101001010;
+            noteAmplitudes_i[ 5] = 16'b0000000000000000;
+            noteAmplitudes_i[ 6] = 16'b0000000000000000;
             noteAmplitudes_i[ 7] = 16'b0000000000000000;
-            noteAmplitudes_i[ 8] = 16'b0000110101001010;
+            noteAmplitudes_i[ 8] = 16'b0000000000000000;
             noteAmplitudes_i[ 9] = 16'b0000000000000000;
             noteAmplitudes_i[10] = 16'b0000000000000000;
             noteAmplitudes_i[11] = 16'b0000000000000000;
-            amplitudeSumNew_i = 22'b0000000010100100101000;
+            amplitudeSumNew_i = 22'b0000100110011000000000;
 
         end
     endtask

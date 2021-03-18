@@ -17,7 +17,7 @@ module ColorCalc #(
     // =============== Fixed Point Specific Parameters ===============
     // The following parameters are computed based on the above parameters W and D. 
     // See LinearVisualizer.sv : line 24 for instruction on how to recompute
-    parameter SaturationAmplifier = 1638,   // 1.6000.. ~ 3277 ~ 1_10011001101 - scales the hue amplitude up to the LEDLimit
+    parameter SaturationAmplifier = 3277,   // 1.6000.. ~ 3277 ~ 1_10011001101 - scales the hue amplitude up to the LEDLimit
     parameter quantizeToSix = 12,           // 0.0.005859375 (~1/170.5) ~ 12 ~ 00000001100 - quantizes the result to be between 0 and 6
     parameter LEDLimit = 2047,              // ~1.0 ~ 2047 ~ 11111111111 - sets the final hue amplitude upper limit 
     parameter steadyBright = 'b0            // (0) use the original amplitudes if they are greater than threshold, 0 otherwise
@@ -43,8 +43,8 @@ module ColorCalc #(
     // =============== cycle 1 outputs and registers ===============
     logic unsigned [W + D - 1 : 0] noteAmplitude;
     logic unsigned [W + D - 1 + (1 + D): 0] noteAmplitudeMult;    // multiplied by 11 bit param SaturationAmplifier (1 whole 10 dec)
-    logic unsigned [D - 1 : 0] noteAmplitudeDec;
-    logic unsigned [D - 1 : 0] noteAmplitudeLimited, noteAmplitudeLimited_d1, noteAmplitudeLimited_d2;
+    logic unsigned [D - 2 : 0] noteAmplitudeDec;
+    logic unsigned [D - 2 : 0] noteAmplitudeLimited, noteAmplitudeLimited_d1, noteAmplitudeLimited_d2;
 
     // =============== cycle 2 outputs and registers ===============
     logic unsigned [D + D - 1 : 0] colorValueXHue, colorValueXHuex;
@@ -65,7 +65,7 @@ module ColorCalc #(
 
             // apply the upper limits of the amplitude
                 // sets the upper limit of note amplitude to the maximum D bit decimal value
-        noteAmplitudeDec = (noteAmplitudeMult[W + D - 1 + (1 + D) : D + D] == 0) ?  noteAmplitudeMult[D + D - 1 : D] : '1;
+        noteAmplitudeDec = (noteAmplitudeMult[W + D - 1 + (1 + D) : D + D] == 0) ?  noteAmplitudeMult[D + D - 2 : D] : '1;
 
                 // sets the upper limit of note amplitude to the D bit LEDLimit value
         noteAmplitudeLimited = (noteAmplitudeDec > LEDLimit) ? LEDLimit : noteAmplitudeDec; 
@@ -116,9 +116,9 @@ module ColorCalc #(
             noteAmplitudeLimited_d2 <= noteAmplitudeLimited_d1;
 
             // take the top 8 bits to represent each of R G and B
-            colorValueMax <= noteAmplitudeLimited_d1[D - 1 : D - 8]; 
-            colorValueXHue_d1  <= colorValueXHue [D + D - 1 : D + D - 8];
-            colorValueXHuex_d1 <= colorValueXHuex[D + D - 1 : D + D - 8];
+            colorValueMax <= noteAmplitudeLimited_d1[D - 2 : D - 9]; 
+            colorValueXHue_d1  <= colorValueXHue [D + D - 2 : D + D - 9];
+            colorValueXHuex_d1 <= colorValueXHuex[D + D - 2 : D + D - 9];
 
             valid_delay <= {valid_delay[1:0], start};
         end

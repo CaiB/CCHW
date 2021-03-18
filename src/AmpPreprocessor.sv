@@ -35,11 +35,12 @@ module AmpPreprocessor #(
     logic [WIDTH + $clog2(BIN_QTY) : 0] amplitudeSum, amplitudeSum_d1;
     
     // ============== cycle 1 wires, outputs and register ==============
-    logic [WIDTH + $clog2(BIN_QTY) + 10 : 0] threshold_tmp;
+    logic [WIDTH + $clog2(BIN_QTY) + D : 0] threshold_tmp;
     logic [WIDTH + $clog2(BIN_QTY) : 0] threshold, threshold_d1;
 
     // ============== cycle 2 outputs and register ==============
-    logic [BIN_QTY - 1 : 0][WIDTH : 0] noteAmplitudesReduced;
+    logic [BIN_QTY - 1 : 0][WIDTH + 1 : 0] noteAmplitudesReduced;
+    logic [BIN_QTY - 1 : 0][WIDTH : 0] noteAmplitudesSlow;
     logic [BIN_QTY - 1 : 0][WIDTH : 0] noteAmplitudesFast;
 
     // ============== cycle 3 outputs==============
@@ -55,20 +56,20 @@ module AmpPreprocessor #(
 
         // cycle 1: multiply the amplitude sum with the parameter to find the relative amplitude threshold
         threshold_tmp = (amplitudeSum_d1 * LEDFloor);
-        threshold = threshold_tmp[WIDTH + $clog2(BIN_QTY) + 10 : 10]; // reduce the multiplication result to the 16 bit fixed point representation
+        threshold = threshold_tmp[WIDTH + $clog2(BIN_QTY) + D : D]; // reduce the multiplication result to the 16 bit fixed point representation
 
         // cycle 2: reduce all amplitudes by the threshold and set subzero amplitudes to 0 ; duplicate this amplitude array but with original values
         for (j = 0; j < BIN_QTY; j++) begin
-            noteAmplitudesReduced[j] = {{$clog2(BIN_QTY){1'b0}}, noteAmplitudes_i[j]} - threshold_d1;
+            noteAmplitudesReduced[j] = {'0, noteAmplitudes_i[j]} - {1'b0, threshold_d1};
 
-            noteAmplitudesFast[j] = noteAmplitudesReduced[j][WIDTH] ? '0 : noteAmplitudes_i[j];
-            noteAmplitudesReduced[j] = noteAmplitudesReduced[j][WIDTH] ? '0 : noteAmplitudesReduced[j];
+            noteAmplitudesFast[j] = noteAmplitudesReduced[j][WIDTH+1] ? '0 : noteAmplitudes_i[j];
+            noteAmplitudesSlow[j] = noteAmplitudesReduced[j][WIDTH+1] ? '0 : noteAmplitudesReduced[j][WIDTH:0];
         end
 
         // cycle 3 accumulation - sum all of the reduced amplitudes from cycle 2 and register all of the computed values
         amplitudeSumNew = 'd0;
         for (k = 0; k < BIN_QTY; k++) begin
-            amplitudeSumNew += noteAmplitudesReduced[k];
+            amplitudeSumNew += noteAmplitudesSlow[k];
         end
 
         // cycle 4 : output the the registered computations and the done signal
@@ -87,7 +88,7 @@ module AmpPreprocessor #(
             threshold_d1    <= threshold;
 
             // register the outputs to allocate full clock period for upcoming computations
-            noteAmplitudes_o <= noteAmplitudesReduced;
+            noteAmplitudes_o <= noteAmplitudesSlow;
             noteAmplitudesFast_o <= noteAmplitudesFast;
             amplitudeSumNew_o <= amplitudeSumNew;
 

@@ -1,7 +1,7 @@
 module Test_ColorCalc;
 
-    parameter W = 6;
-    parameter D = 10;
+    parameter W = 5;
+    parameter D = 11;
     
     parameter TB_PERIOD = 100ns;
 
@@ -9,7 +9,7 @@ module Test_ColorCalc;
     logic data_v;
     logic [W + D - 1 : 0] noteAmplitude_i;
     logic [W + D - 1 : 0] noteAmplitudeFast_i;
-    logic [D - 1 : 0] noteHue_i;
+    logic [D - 2 : 0] noteHue_i;
     logic start, clk, rst;
 
     // clock setup
@@ -20,11 +20,7 @@ module Test_ColorCalc;
 
     ColorCalc #(
         .W(W),
-        .D(D),
-        .SaturationAmplifier(1638),
-        .quantizeToSix('b0000000110),
-        .LEDLimit(1023),
-        .steadyBright('0)
+        .D(D)
     ) dut (
         .rgb                (rgb                ),
         .data_v             (data_v             ),
@@ -41,27 +37,9 @@ module Test_ColorCalc;
         rst = 0;
         start = '1;
 
-        noteAmplitude_i = 10'b0101100000;
-        noteAmplitudeFast_i = 10'b1011111010;
-        noteHue_i = 10'b1111010010;
-
-        @(posedge clk);
-        @(posedge clk);
-        wait(data_v);
-
-        noteAmplitude_i = 10'b1100011001;
-        noteAmplitudeFast_i = 10'b0110101101;
-        noteHue_i = 10'b0111110101;
-
-
-        @(posedge clk);
-        @(posedge clk);
-        wait(data_v);
-
-        noteAmplitude_i = 10'b1001111010;
-        noteAmplitudeFast_i = 10'b0100001110;
-        noteHue_i = 10'b0100000000;
-
+        noteAmplitude_i = 39296;
+        noteAmplitudeFast_i = 65535;
+        noteHue_i = 170;
 
         @(posedge clk);
         @(posedge clk);

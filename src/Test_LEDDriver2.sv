@@ -53,10 +53,61 @@ module Test_LEDDriver2;
 
     endtask
 
-    initial begin
-        reset(10);
+    // ========================  LEDModel Testing =====================
+    // clock and data signals between individual WS2801s. For LED[i], SDIO[i] is the input and SDIO[i+1] is the output
+    logic [LEDS:0] SDIO, CKIO;
 
-        testInputs({'0, 6'd10, 6'd10, 6'd10},{'0,24'hAAAAAA, 24'hF0F0F0F0, 24'hFFFFFF});
+    logic [LEDS-1:0][23:0] FrameColorContent;
+    logic [LEDS-1:0][23:0] FrameColorContentExpected;
+
+    // TODO: Make sure this genvar is not in use is not already in use,
+    // if the "automatic" statement works you may not need to change loop iteration variable
+    genvar i;
+
+    // since the checkLEDs task is automatic it is okay if j is used elsewhere
+    integer j;
+
+    generate
+        for ( i = 0; i < LEDS; i++) begin : LEDBar
+            LEDModel led (.rgb(FrameColorContent[i]), .SDO(SDIO[i+1]), .CKO(CKIO[i+1]), .SDI(SDIO[i]), .CKI(CKIO[i]));
+        end
+    endgenerate
+
+    
+    // Note: surround with a fork join statement to stop the wait statements from blocking
+    task automatic checkLEDs(logic [LEDS-1:0][23:0] ColorContent);
+        begin
+            $timeformat(-9, 2, " ns");
+
+            FrameColorContentExpected = ColorContent;
+
+            wait(CKIO[0]);
+            // TODO: replace with a signal that suggests that the values have been registered (500us after transmisison finished)
+            wait(done);
+            wait(!done);
+
+            for (j = 0; j < LEDS; j++) begin
+                assert(FrameColorContent[j] == FrameColorContentExpected[j]) $display("LED %d at time %d is CORRECT", j, $time);
+                    else $display("LED %d at time %d is INCORRECT ; Expected = %6h, Recieved = %6h", j, $time, FrameColorContentExpected[j], FrameColorContent[j]);
+            end
+        end
+    endtask
+
+    assign SDIO[0] = dOut;
+    assign CKIO[0] = clkOut;
+
+    // ==================================================================
+
+    initial begin
+        $timeformat(-6, 2, " us");
+
+        reset(10);
+            
+        fork
+            testInputs({'0, 6'd10, 6'd10, 6'd10},{'0,24'hAAAAAA, 24'hF0F0F0F0, 24'hFFFFFF});
+            checkLEDs({{30{24'hAAAAAA}},{10{24'hF0F0F0F0}},{10{24'hFFFFFF}}});
+        join
+        
         testInputs({'0, 6'd10, 6'd10, 6'd10},{'0,24'hAAAAAA, 24'hF0F0F0F0, 24'hFFFFFF});
         //testInputs({'0},{'0});
         //testInputs({'0},{'0});
