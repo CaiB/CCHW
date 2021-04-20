@@ -2,14 +2,14 @@
 vlib work
 
 # Source and Testbench files
-vlog -work work "../src/Test_RAM.sv"
-vlog -work work "../src/FPGA/RAM_8192.v"
+vlog -work work "../src/DFT.sv"
+vlog -work work "../src/Test_DFTParts.sv"
 
 # Call simulator
-vsim -voptargs="+acc" -t 1ps -lib work -Lf altera_mf_ver Test_RAM
+vsim -voptargs="+acc" -t 1ps -lib work Test_OctaveSelector
 
 # Source the wave file
-do Test_RAM_wave.do
+do Test_OctaveSelector_wave.modelsim
 
 # Set windows
 view wave

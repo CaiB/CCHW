@@ -3,14 +3,14 @@ vlib work
 
 # Source and Testbench files
 vlog -work work "../src/Common.sv"
-vlog -work work "../src/Filter.sv"
-vlog -work work "../src/Test_Filter.sv"
+vlog -work work "../src/Test_NoteFinder.sv"
+vlog -work work "../src/NoteFinder.sv"
 
 # Call simulator
-vsim -voptargs="+acc" -t 1ps -lib work Test_FilterIIR
+vsim -voptargs="+acc" -t 1ps -lib work Test_PeakDetector
 
 # Source the wave file
-do Test_FilterIIR_wave.do
+do Test_PeakDetector_wave.modelsim
 
 # Set windows
 view wave

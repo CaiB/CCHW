@@ -10,7 +10,7 @@ vlog -work work "../src/NoteFinder.sv"
 vsim -voptargs="+acc" -t 1ps -lib work Test_FindMax120
 
 # Source the wave file
-do Test_FindMax120_wave.do
+do Test_FindMax120_wave.modelsim
 
 # Set windows
 view wave

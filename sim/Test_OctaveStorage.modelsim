@@ -6,10 +6,10 @@ vlog -work work "../src/DFT.sv"
 vlog -work work "../src/Test_DFTParts.sv"
 
 # Call simulator
-vsim -voptargs="+acc" -t 1ps -lib work Test_OctaveSelector
+vsim -voptargs="+acc" -t 1ps -lib work Test_OctaveStorage
 
 # Source the wave file
-do Test_OctaveSelector_wave.do
+do Test_OctaveStorage_wave.modelsim
 
 # Set windows
 view wave

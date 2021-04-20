@@ -2,14 +2,14 @@
 vlib work
 
 # Source and Testbench files
-vlog -work work "../src/ColorCalc.sv"
-vlog -work work "../src/Test_ColorCalc.sv"
+vlog -work work "../src/LEDModel.sv"
+vlog -work work "../src/Test_LEDModel.sv"
 
 # Call simulator
-vsim -voptargs="+acc" -t 1ps -lib work Test_ColorCalc
+vsim -voptargs="+acc" -t 1ps -lib work Test_LEDModel
 
 # Source the wave file
-do Test_ColorCalc_wave.do
+do Test_LEDModel_wave.modelsim
 
 # Set windows
 view wave

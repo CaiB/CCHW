@@ -7,10 +7,10 @@ vlog -work work "../src/Test_NoteFinder.sv"
 vlog -work work "../src/NoteFinder.sv"
 
 # Call simulator
-vsim -voptargs="+acc" -t 1ps -lib work Test_PeakPlacer
+vsim -voptargs="+acc" -t 1ps -lib work Test_NoteOperationManager
 
 # Source the wave file
-do Test_PeakPlacer_wave.do
+do Test_NoteOperationManager_wave.modelsim
 
 # Set windows
 view wave

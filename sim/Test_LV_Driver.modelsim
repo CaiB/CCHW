@@ -16,7 +16,7 @@ vlog -work work "../src/HueCalc.sv"
 vsim -voptargs="+acc" -t 1ps -lib work Test_LV_Driver
 
 # Source the wave file
-do Test_LV_Driver_wave.do
+do Test_LV_Driver_wave.modelsim
 
 # Set windows
 view wave

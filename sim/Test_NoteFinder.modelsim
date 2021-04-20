@@ -5,12 +5,13 @@ vlib work
 vlog -work work "../src/Common.sv"
 vlog -work work "../src/Test_NoteFinder.sv"
 vlog -work work "../src/NoteFinder.sv"
+vlog -work work "../src/Filter.sv"
 
 # Call simulator
-vsim -voptargs="+acc" -t 1ps -lib work Test_NoteAssociator
+vsim -voptargs="+acc" -t 1ps -lib work Test_NoteFinder
 
 # Source the wave file
-do Test_NoteAssociator_wave.do
+do Test_NoteFinder_wave.modelsim
 
 # Set windows
 view wave

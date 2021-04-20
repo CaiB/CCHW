@@ -9,7 +9,7 @@ vlog -work work "../src/Test_HueCalc.sv"
 vsim -voptargs="+acc" -t 1ps -lib work Test_HueCalc
 
 # Source the wave file
-do Test_HueCalc_wave.do
+do Test_HueCalc_wave.modelsim
 
 # Set windows
 view wave

@@ -16,7 +16,7 @@ vlog -work work "../src/FPGA/RAM_8192.v"
 vsim -voptargs="+acc" -t 1ps -lib work -Lf altera_mf_ver Test_DFT
 
 # Source the wave file
-do Test_DFTWithData_ramdebug_wave.do
+do Test_DFTWithData_ramdebug_wave.modelsim
 
 # Set windows
 view wave

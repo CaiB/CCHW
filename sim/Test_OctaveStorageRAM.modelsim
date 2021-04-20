@@ -10,7 +10,7 @@ vlog -work work "../src/FPGA/RAM_512.v"
 vsim -voptargs="+acc" -t 1ps -lib work -Lf altera_mf_ver Test_OctaveStorageRAM
 
 # Source the wave file
-do Test_OctaveStorageRAM_wave.do
+do Test_OctaveStorageRAM_wave.modelsim
 
 # Set windows
 view wave

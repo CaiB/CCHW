@@ -27,7 +27,7 @@ vlog -work work "../src/LEDModel.sv"
 vsim -voptargs="+acc" -t 1ps -lib work -Lf altera_mf_ver Test_FullSystem
 
 # Source the wave file
-do Test_FullSystem_wave.do
+do Test_FullSystem_wave.modelsim
 
 # Set windows
 view wave
